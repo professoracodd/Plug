@@ -380,7 +380,18 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
 /* ---------- Plug additions ---------- */
 body[data-tab=price]{--tc:249 168 212}
 body[data-tab=crop]{--tc:134 239 172}
-body[data-tab=shop]{--tc:147 197 253}
+body[data-tab=costs]{--tc:147 197 253}
+body[data-tab=benches]{--tc:196 181 253}
+.tab{min-width:56px}
+.sum-row{display:grid;grid-template-columns:minmax(0,1fr) 92px 104px;gap:8px;align-items:baseline;padding:9px 0;font-size:14px;line-height:19px}
+.sum-row+.sum-row{border-top:1px solid var(--line)}
+.sum-row>span:first-child{color:var(--on-sv)}
+.sum-row b,.sum-row .caps{text-align:right;font-weight:600}
+.sum-h{padding-top:2px}
+.sum-h .caps{color:var(--on-sv)}
+.sum-row.tot>span:first-child{color:var(--on-surface);font-weight:600}
+.sum-row.tot b{font-size:17px;font-weight:700}
+.kv .link{font-size:13px;margin-left:6px}
 body[data-tab=plan]{--tc:253 224 138}
 .fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
 .fgrid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -472,7 +483,8 @@ input.flash{animation:flash 1.4s ease 2}
   <div class="tab-in">
     <button class="tab" data-a="tab:price" data-tab="price"><span class="ms" aria-hidden="true">sell</span><span class="caps">Price</span></button>
     <button class="tab" data-a="tab:crop" data-tab="crop"><span class="ms" aria-hidden="true">eco</span><span class="caps">Crop</span></button>
-    <button class="tab" data-a="tab:shop" data-tab="shop"><span class="ms" aria-hidden="true">warehouse</span><span class="caps">Shop</span></button>
+    <button class="tab" data-a="tab:costs" data-tab="costs"><span class="ms" aria-hidden="true">payments</span><span class="caps">Costs</span></button>
+    <button class="tab" data-a="tab:benches" data-tab="benches"><span class="ms" aria-hidden="true">table_rows</span><span class="caps">Benches</span></button>
     <button class="tab" data-a="tab:plan" data-tab="plan"><span class="ms" aria-hidden="true">event_note</span><span class="caps">Plan</span></button>
   </div>
 </nav>
@@ -505,17 +517,17 @@ function fromPreset(k){return Object.assign(newCrop(),PRESETS[k],{id:uid()});}
 function newBench(type){return {id:uid(),type:type||'mist',len:'',wid:'',count:''};}
 function newCrop(name){return {id:uid(),name:name||'New crop',cells:'50',src:'stock',
   stock:{plant:'',life:'',upkeep:'',perMonth:'',harvest:''},buy:{box:'',per:'',freight:''},collect:{rate:'',trip:'',perTrip:''},
-  cpc:1,hormone:'',traysPerBag:'',tags:'',other:'',stickRate:'',fillMin:'',gradeMin:'',mistWk:'',hardWk:'',strike:'',cull:'',royalty:'',price:''};}
+  cpc:1,hormone:'',flatsPerYd:'',tags:'',other:'',stickRate:'',fillMin:'',gradeMin:'',mistWk:'',hardWk:'',strike:'',cull:'',royalty:'',price:''};}
 function defaults(){const c=fromPreset('coleus');return {v:1,presets:1,tab:'price',cur:c.id,crops:[c],
-  shop:{wage:'',margin:40,rateMode:'calc',rateDirect:'',mistAdd:'',costs:COSTS.map(n=>({n,v:''})),benchSqft:'',occ:'',weeks:'52',flatL:'21.5',flatW:'11',benches:[newBench('mist'),newBench('open')],
-    mediaPrice:'',trayPrice:'',trayUses:'',tagPrice:'',hormones:[{id:uid(),n:'Rooting hormone',price:'',per:''}]},
+  shop:{wage:'',margin:40,rateMode:'calc',rateDirect:'',mistAdd:'',costs:COSTS.map(n=>({n,v:''})),occ:'',weeks:'52',flatL:'21.5',flatW:'11',benches:[newBench('mist'),newBench('open')],
+    mixYd:'',trayPrice:'',trayUses:'',tagPrice:'',hormones:[{id:uid(),n:'Rooting hormone',price:'',per:''}]},
   plan:{qty:'',ship:''}};}
 function normalize(o){const d=defaults();if(!o||typeof o!=='object'||!Array.isArray(o.crops)||!o.crops.length)return d;
   const s=Object.assign({},d.shop,o.shop||{});if(!Array.isArray(s.costs))s.costs=d.shop.costs;if(!Array.isArray(s.hormones))s.hormones=[];if(!Array.isArray(s.benches))s.benches=[newBench('mist'),newBench('open')];
   const crops=o.crops.map(c=>{const b=newCrop();const r=Object.assign(b,c);r.stock=Object.assign(newCrop().stock,c.stock||{});r.buy=Object.assign(newCrop().buy,c.buy||{});r.collect=Object.assign(newCrop().collect,c.collect||{});if(!r.id)r.id=uid();if(!SRC[r.src])r.src='stock';return r;});
   if(!o.presets&&!crops.some(c=>/^coleus$/i.test(String(c.name).trim())))crops.push(fromPreset('coleus'));
   const cur=crops.some(c=>c.id===o.cur)?o.cur:crops[0].id;
-  return {v:1,presets:1,tab:['price','crop','shop','plan'].includes(o.tab)?o.tab:'price',cur,crops,shop:s,plan:Object.assign({},d.plan,o.plan||{})};}
+  return {v:1,presets:1,tab:['price','crop','costs','benches','plan'].includes(o.tab==='shop'?'costs':o.tab)?(o.tab==='shop'?'costs':o.tab):'price',cur,crops,shop:s,plan:Object.assign({},d.plan,o.plan||{})};}
 let S;try{S=normalize(JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY)));}catch(e){S=defaults();}
 let saveT;function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}},150);}
 function saveNow(){clearTimeout(saveT);try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
@@ -558,17 +570,17 @@ function calc(c){
   const s=S.shop,miss=[];
   const need=(val,key,label,tab,allowZero)=>{const v=num(val);if(isNaN(v)||v<0||(!allowZero&&v===0)){miss.push({key,label,tab});return null;}return v;};
   const all=(...a)=>a.every(x=>x!=null&&!isNaN(x));
-  const W=need(s.wage,'shop.wage','Hourly wage','shop');
+  const W=need(s.wage,'shop.wage','Hourly wage','costs');
   // bench rate ($ per sq ft per week)
   let R=null,costSum=0;
-  if(s.rateMode==='direct'){R=need(s.rateDirect,'shop.rateDirect','Bench rate','shop');}
+  if(s.rateMode==='direct'){R=need(s.rateDirect,'shop.rateDirect','Bench rate','costs');}
   else{costSum=s.costs.reduce((a,r)=>a+opt(r.v),0);
-    if(!(costSum>0))miss.push({key:'shop.costs.0.v',label:'Annual facility costs',tab:'shop'});
-    const bt=benchTotals();const sq=bt.area>0?bt.area:need(s.benchSqft,'shop.benchSqft','Bench square feet','shop'),oc=need(s.occ,'shop.occ','% of bench in use','shop'),wk=need(s.weeks,'shop.weeks','Weeks in production','shop');
+    if(!(costSum>0))miss.push({key:'shop.costs.0.v',label:'Yearly facility costs',tab:'costs'});
+    const bt=benchTotals();const sq=bt.area>0?bt.area:null;if(!sq)miss.push({key:'shop.benches.0.len',label:'Benches',tab:'benches'});const oc=need(s.occ,'shop.occ','% of bench in use','costs'),wk=need(s.weeks,'shop.weeks','Weeks you grow per year','benches');
     if(costSum>0&&all(sq,oc,wk))R=costSum/(sq*Math.min(oc,100)/100*Math.min(wk,52));}
   const A=opt(s.mistAdd);
   // tray
-  const cells=need(c.cells,'c.cells','Cells per tray','crop');
+  const cells=need(c.cells,'c.cells','Cells per flat','crop');
   const cpc=Math.max(1,Math.round(opt(c.cpc))||1);
   const cuts=cells!=null?cells*cpc:null;
   // cuttings
@@ -582,13 +594,13 @@ function calc(c){
   const cutCost=unit!=null&&cuts!=null?unit*cuts:null;
   // hormone
   const prod=c.hormone?s.hormones.find(h=>h.id===c.hormone):null;let hUnit=0,hormCost=prod?null:0,hPer=null;
-  if(prod){const i=s.hormones.indexOf(prod);const hp=need(prod.price,'shop.hormones.'+i+'.price',(prod.n||'Hormone')+' price','shop'),hn=need(prod.per,'shop.hormones.'+i+'.per',(prod.n||'Hormone')+' cuttings per container','shop');
+  if(prod){const i=s.hormones.indexOf(prod);const hp=need(prod.price,'shop.hormones.'+i+'.price',(prod.n||'Hormone')+' price','costs'),hn=need(prod.per,'shop.hormones.'+i+'.per',(prod.n||'Hormone')+' cuttings per container','costs');
     if(all(hp,hn)){hUnit=hp/hn;hPer=hn;if(cuts!=null)hormCost=hUnit*cuts;}}
   // supplies
-  const mp=need(s.mediaPrice,'shop.mediaPrice','Media bag price','shop'),tpb=need(c.traysPerBag,'c.traysPerBag','Trays filled per bag','crop');
+  const mp=need(s.mixYd,'shop.mixYd','Potting mix price','costs'),tpb=need(c.flatsPerYd,'c.flatsPerYd','Flats per cubic yard','crop');
   const media=all(mp,tpb)?mp/tpb:null;
-  const tp=need(s.trayPrice,'shop.trayPrice','Tray price','shop');const uses=Math.max(1,opt(s.trayUses)||1);
-  const tags=opt(c.tags);let tagCost=0;if(tags>0){const tg=need(s.tagPrice,'shop.tagPrice','Tag price','shop');tagCost=tg!=null?tg*tags:null;}
+  const tp=need(s.trayPrice,'shop.trayPrice','Flat & insert price','costs');const uses=Math.max(1,opt(s.trayUses)||1);
+  const tags=opt(c.tags);let tagCost=0;if(tags>0){const tg=need(s.tagPrice,'shop.tagPrice','Tag price','costs');tagCost=tg!=null?tg*tags:null;}
   const other=opt(c.other);
   const trayCost=tp!=null&&tagCost!=null?tp/uses+tagCost+other:null;
   // labor
@@ -596,7 +608,7 @@ function calc(c){
   const labor=all(W,sr)&&cuts!=null?W*(cuts/sr+(fm+gm)/60):null;
   const laborHrs=sr!=null&&cuts!=null?cuts/sr+(fm+gm)/60:null;
   // bench
-  const fl=flatIn();if(!fl)miss.push({key:'shop.flatL',label:'Flat size',tab:'shop'});const sq=fl?fl.sqft:null;const mw=opt(c.mistWk),hw=opt(c.hardWk);
+  const fl=flatIn();if(!fl)miss.push({key:'shop.flatL',label:'Flat size',tab:'benches'});const sq=fl?fl.sqft:null;const mw=opt(c.mistWk),hw=opt(c.hardWk);
   if(!(mw+hw>0)){miss.push({key:'c.mistWk',label:'Weeks on the bench',tab:'crop'});}
   const space=R!=null&&sq!=null&&mw+hw>0?sq*(mw*(R+A)+hw*R):null;
   const sqftWk=sq!=null?sq*(mw+hw):null;
@@ -607,8 +619,8 @@ function calc(c){
   const parts=[
     {k:'cut',n:SRC[c.src].cut,v:cutCost,col:'mint'},
     ...(prod?[{k:'horm',n:'Rooting hormone',v:hormCost,col:'lav'}]:[]),
-    {k:'media',n:'Media',v:media,col:'peach'},
-    {k:'tray',n:'Trays, tags & other',v:trayCost,col:'sky'},
+    {k:'media',n:'Potting mix',v:media,col:'peach'},
+    {k:'tray',n:'Flat, tags & other',v:trayCost,col:'sky'},
     {k:'labor',n:'Labor',v:labor,col:'pink'},
     {k:'space',n:'Bench space',v:space,col:'butter'},
     ...(roy>0?[{k:'roy',n:'Royalty',v:royCost,col:'gray'}]:[])];
@@ -631,7 +643,7 @@ function fld(label,key,o={}){const v=get(key);
 function cardHead(icon,tone,title,sub){return `<div class="card-h"><div class="card-t"><span class="card-ic tn-${tone}"><span class="ms" aria-hidden="true">${icon}</span></span><div><h2 class="title">${title}</h2>${sub?`<p class="foot muted">${sub}</p>`:''}</div></div></div>`;}
 function pills(){return `<section class="pills-wrap" aria-label="Crops"><div class="pills">${S.crops.map(c=>`<button class="pill${c.id===S.cur?' on':''}" data-a="crop:${c.id}"><span class="ms" aria-hidden="true">eco</span><span class="t">${esc(c.name||'Untitled')}</span></button>`).join('')}<button class="pill add" data-a="addCrop" aria-label="Add a crop"><span class="ms" aria-hidden="true">add</span></button></div></section>`;}
 function missCard(r,tab){const list=tab?r.miss.filter(x=>x.tab===tab):r.miss;if(!list.length)return '';
-  return `<section class="card miss-card">${cardHead('pending_actions','butter','Still needed',tab?'Fill these in to finish the price.':'Tap one to go to it. Until these are in, the price can\'t be figured.')}<div class="miss-wrap">${list.map(x=>`<button class="mchip" data-a="jump:${x.key}|${x.tab}"><span class="ms" aria-hidden="true">${x.tab==='shop'?'warehouse':'eco'}</span>${esc(x.label)}</button>`).join('')}</div></section>`;}
+  return `<section class="card miss-card">${cardHead('pending_actions','butter','Still needed',tab?'Fill these in to finish the price.':'Tap one to go to it. Until these are in, the price can\'t be figured.')}<div class="miss-wrap">${list.map(x=>`<button class="mchip" data-a="jump:${x.key}|${x.tab}"><span class="ms" aria-hidden="true">${{costs:'payments',benches:'table_rows'}[x.tab]||'eco'}</span>${esc(x.label)}</button>`).join('')}</div></section>`;}
 
 /* ---------- PRICE tab ---------- */
 function vPrice(){const c=crop(),r=calc(c);const p=num(c.price);
@@ -646,41 +658,27 @@ function vPrice(){const c=crop(),r=calc(c);const p=num(c.price);
   </div>
   <div class="slider"><input class="range" type="range" min="0" max="5" step="0.01" value="${isNaN(p)?0:Math.min(p,5)}" data-k="c.price" aria-label="Price per plug slider"><div class="slider-ends"><span>$0</span><span>$5.00</span></div></div>
   <div class="sugg" data-o="suggBox"${r.sugg==null?' hidden':''}><span>At your <b data-o="tm">${Math.round(r.tm*100)}%</b> target margin: <b data-o="sugg">—</b></span><button data-a="useSugg">Use</button></div>
-  <div class="seg-row"><span class="foot muted" data-o="trayLine"></span><span class="glow num" data-o="profitBadge"></span></div>
-</section>
-<section class="tiles" aria-label="Results">
-  <div class="tile tn-mint"><div class="tile-h"><span class="caps">Cost / plug</span></div><div class="tile-v bodyE num" data-o="cpp">—</div><div class="tiny" data-o="cppSub"></div></div>
-  <div class="tile tn-pink"><div class="tile-h"><span class="caps">Profit / tray</span></div><div class="tile-v bodyE num" data-o="ppt">—</div><div class="tiny" data-o="pptSub"></div></div>
-  <div class="tile tn-lav"><div class="tile-h"><span class="caps">Margin</span></div><div class="tile-v bodyE num" data-o="mgn">—</div><div class="tiny" data-o="mgnSub"></div></div>
+  <div class="seg-row"><span class="foot muted" data-o="costLine"></span><span class="glow num" data-o="mgnBadge"></span></div>
 </section>
 <div data-r="miss"></div>
-<section class="card">${cardHead('calendar_month','sky','Most per year','If every bench grew this crop.')}<div data-r="cap"></div></section>
-<section class="card">${cardHead('stacked_bar_chart','peach','Where the money goes','Cost for one tray, before it sells.')}<div data-r="bars"></div></section>
-<section class="card">${cardHead('grid_on','mint','One tray','What you stick and what you sell.')}<div data-r="yield"></div></section>`;}
+<section class="card">${cardHead('summarize','sky','Summary','')}<div data-r="sum"></div></section>
+<section class="card">${cardHead('stacked_bar_chart','peach','Cost per flat','Where the money goes, before it sells.')}<div data-r="bars"></div></section>`;}
 
 function barsHTML(r){const tot=r.total||r.parts.reduce((a,p)=>a+(p.v||0),0)||1;
-  return `<div class="bars">${r.parts.map(p=>`<div class="bar-row"><span class="n">${esc(p.n)}</span><div class="bar-track"><div class="bar-fill c-${p.col}" style="width:${p.v!=null?Math.max(0,p.v/tot*100):0}%"></div></div><span class="v${p.v==null?' dash':''}">${p.v==null?'needs info':money(p.v)}</span></div>`).join('')}</div>
-  <div class="tot-line"><span class="callout">Cost per tray</span><b class="num">${money(r.total)}</b></div>
-  <div class="kv"><span>Per cutting stuck</span><b>${plug(r.perCut)}</b></div>
-  <div class="kv"><span>Per sellable plug</span><b>${plug(r.perPlug)}</b></div>`;}
-function capHTML(r){const k=capacity(r);const kv=(ic,l,v)=>`<div class="kv"><span><span class="ms">${ic}</span>${l}</span><b>${v}</b></div>`;
-  if(k.why==='weeks')return `<p class="foot muted">Add weeks under mist and hardening off on the Crop tab.</p>`;
-  if(k.why)return `<p class="foot muted">${k.why==='mist'?'Add your mist benches':'Add open benches for hardening off'} on the Shop tab to see how many flats you can turn.</p><div class="miss-wrap"><button class="mchip" data-a="jump:shop.benches.0.len|shop"><span class="ms" aria-hidden="true">warehouse</span>Benches</button></div>`;
-  return kv('content_cut','Stick',`${k.batch.toLocaleString('en-US')} flats every ${n1(k.every,1)} wk${k.every===1?'':'s'}`)+
-    kv('local_shipping','Ship',`${k.batch.toLocaleString('en-US')} flats every ${n1(k.every,1)} wk${k.every===1?'':'s'}<small>first ones ${n1(k.first,1)} wks after you start</small>`)+
-    kv('warehouse','Bench limit',`${k.limit==='mist'?'Mist':'Open'} benches<small>${k.mist.toLocaleString('en-US')} mist · ${k.open.toLocaleString('en-US')} open flats${(k.limit==='mist'?k.idleOpen:k.idleMist)>0.005?' · '+pct(k.limit==='mist'?k.idleOpen:k.idleMist)+' of '+(k.limit==='mist'?'open':'mist')+' space idle':''}</small>`)+
-    kv('grid_on','Flats per year',`${k.flats.toLocaleString('en-US')}<small>${k.turns} turns in ${n1(k.weeks,0)} wks</small>`)+
-    kv('eco','Plugs per year',k.plugs!=null?Math.floor(k.plugs).toLocaleString('en-US'):'—')+
-    kv('payments','Income per year',money(k.rev,0))+
-    `<div class="tot-line"><span class="callout">Profit per year</span><b class="num${k.profit<0?' neg':''}">${money(k.profit,0)}</b></div>`+
-    (k.rev==null?`<p class="foot muted note">Set a price to see income.</p>`:'');}
-function yieldHTML(r){const fill=r.sell!=null&&r.cells?r.sell/r.cells:null;
-  return `<div class="kv"><span><span class="ms">grid_on</span>Cells</span><b>${n1(r.cells,0)}</b></div>
-  <div class="kv"><span><span class="ms">content_cut</span>Cuttings stuck</span><b>${n1(r.cuts,0)}${r.cpc>1?` <span class="muted">(${r.cpc} per cell)</span>`:''}</b></div>
-  <div class="kv"><span><span class="ms">check_circle</span>Sellable plugs</span><b>${r.sell==null?'—':n1(r.sell,1)}</b></div>
-  <div class="kv"><span><span class="ms">percent</span>Sellable fill</span><b>${pct(fill)}</b></div>
-  <div class="kv"><span><span class="ms">schedule</span>Bench time</span><b>${r.mw+r.hw>0?n1(r.mw+r.hw,1)+' wks':'—'} · ${r.sqftWk!=null&&r.mw+r.hw>0?n1(r.sqftWk,1)+' sq-ft-wks':'—'}</b></div>
-  <p class="foot muted note">Empty and culled cells still cost money. Their share is spread over the plugs that sell.</p>`;}
+  return `<div class="bars">${r.parts.map(p=>`<div class="bar-row"><span class="n">${esc(p.n)}</span><div class="bar-track"><div class="bar-fill c-${p.col}" style="width:${p.v!=null?Math.max(0,p.v/tot*100):0}%"></div></div><span class="v${p.v==null?' dash':''}">${p.v==null?'needs info':money(p.v)}</span></div>`).join('')}</div>`;}
+
+function summaryHTML(r){const k=capacity(r),yr=k.batch>0;
+  const cell=(v,neg)=>`<b class="num${neg?' neg':''}">${v}</b>`;
+  const row=(l,a,b,cls,na,nb)=>`<div class="sum-row${cls?' '+cls:''}"><span>${l}</span>${cell(a,na)}${cell(b,nb)}</div>`;
+  let h=`<div class="sum-row sum-h"><span></span><span class="caps">Per flat</span><span class="caps">Per year</span></div>`;
+  h+=row('Sellable plugs',r.sell!=null?n1(r.sell,1):'—',yr&&k.plugs!=null?Math.floor(k.plugs).toLocaleString('en-US'):'—');
+  h+=row('Cost',money(r.total),yr?money(k.cost,0):'—');
+  h+=row('Income',money(r.rev),yr?money(k.rev,0):'—');
+  h+=row('Profit',money(r.profit),yr?money(k.profit,0):'—','tot',r.profit<0,yr&&k.profit<0);
+  if(yr)h+=`<p class="foot muted note">${k.batch.toLocaleString('en-US')} flats in and out every ${n1(k.every,1)} wk${k.every===1?'':'s'}, ${k.flats.toLocaleString('en-US')} flats a year. Your ${k.limit} benches set the limit.</p>`;
+  else if(k.why==='weeks')h+=`<p class="foot muted note">Add weeks on the bench on the Crop tab to see the year.</p>`;
+  else h+=`<p class="foot muted note">Add your ${k.why==='mist'?'mist':'open'} benches on the Benches tab to see the year.</p>`;
+  return h;}
 
 /* ---------- CROP tab ---------- */
 function vCrop(){const c=crop(),r=calc(c),s=S.shop;
@@ -692,88 +690,87 @@ function vCrop(){const c=crop(),r=calc(c),s=S.shop;
     collect:`<div class="fgrid">${fld('Collecting rate','c.collect.rate',{suf:'/hr',wide:true,hint:'Cuttings you can collect per hour, including travel time on site'})}${fld('Trip cost','c.collect.trip',{pre:'$',hint:'Gas or fees per trip, if any'})}${fld('Cuttings per trip','c.collect.perTrip',{})}</div>`};
   const hOn=!!(c.hormone&&s.hormones.some(h=>h.id===c.hormone));
   return pills()+`
-<section class="card">${cardHead('eco','mint','Crop','The plant this price is for.')}<div class="fgrid">${fld('Name','c.name',{text:true,wide:true})}</div>
+<section class="card">${cardHead('eco','mint','Crop','')}<div class="fgrid">${fld('Name','c.name',{text:true,wide:true})}</div>
   <div class="btn-row"><button class="chip" data-a="dupCrop"><span class="ms sm">content_copy</span>Duplicate</button>${S.crops.length>1?`<button class="chip danger" data-a="delCrop"><span class="ms sm">delete</span>Delete</button>`:''}</div></section>
 
-<section class="card">${cardHead('grid_on','sky','Tray','')}
-  <div class="fgrid">${fld('Cells per tray','c.cells',{wide:true,hint:'In a 1020 flat. Flat size is on the Shop tab.'})}</div>
+<section class="card">${cardHead('grid_on','sky','Flat','')}
+  <div class="fgrid">${fld('Cells per flat','c.cells',{wide:true})}</div>
   <div class="qchips">${[32,38,50,72,128].map(n=>`<button class="qchip${num(c.cells)===n?' on':''}" data-a="cells:${n}">${n}</button>`).join('')}</div>
   <div class="sw-row" style="margin-top:14px"><div><span class="bodyE sm blk">Cuttings per cell</span><span class="foot muted">More than one for a fuller plug</span></div>
     <div class="stepper"><button data-a="cpc:-1" aria-label="Fewer cuttings per cell"><span class="ms">remove</span></button><span class="badge-wrap"><span class="badge" data-o="cpc">${r.cpc}</span></span><button data-a="cpc:1" aria-label="More cuttings per cell"><span class="ms">add</span></button></div></div>
-  <div class="fgrid">${fld('Trays filled per bag','c.traysPerBag',{hint:'Of your potting media'})}${fld('Tags per tray','c.tags',{hint:'Leave blank for none'})}${fld('Other supplies','c.other',{pre:'$',suf:'/tray',wide:true,hint:'Fertilizer, fungicide drench, anything else per tray'})}</div>
-  <div class="calc-line"><span>Media, tray & tags</span><b data-o="supplies">—</b></div></section>
+  <div class="fgrid">${fld('Flats per cubic yard','c.flatsPerYd',{hint:'How many flats one yard of mix fills'})}${fld('Tags per flat','c.tags',{hint:'Blank for none'})}${fld('Other supplies','c.other',{pre:'$',suf:'/flat',wide:true,hint:'Fertilizer, fungicide drench, anything else'})}</div></section>
 
-<section class="card">${cardHead(SRC[c.src].ic,'mint','Where the cuttings come from','')}
+<section class="card">${cardHead(SRC[c.src].ic,'mint','Cuttings','')}
   <div class="seg full">${Object.keys(SRC).map(k=>`<button class="${c.src===k?'on':''}" data-a="src:${k}">${SRC[k].n}</button>`).join('')}</div>
   ${srcF[c.src]}
-  <div class="calc-line"><span>Cost per cutting</span><b data-o="unit">—</b></div></section>
-
-<section class="card">${cardHead('science','lav','Rooting hormone','')}
-  <div class="sw-row"><span class="callout">Use rooting hormone</span><label class="switch"><input type="checkbox" data-sw="horm"${hOn?' checked':''} aria-label="Use rooting hormone"><span></span></label></div>
-  ${hOn?`<label class="fld" style="margin-top:10px"><span class="caps">Product</span><select data-k="c.hormone">${s.hormones.map(h=>`<option value="${h.id}"${h.id===c.hormone?' selected':''}>${esc(h.n||'Untitled')}</option>`).join('')}</select></label>
-  <div class="calc-line"><span>Hormone per cutting</span><b data-o="hUnit">—</b></div>`:`<p class="foot muted note">Turn on to charge the hormone you dip in. Products and prices are on the Shop tab.</p>`}</section>
+  <div class="sw-row" style="margin-top:14px"><span class="callout">Rooting hormone</span><label class="switch"><input type="checkbox" data-sw="horm"${hOn?' checked':''} aria-label="Use rooting hormone"><span></span></label></div>
+  ${hOn?`<label class="fld" style="margin-top:10px"><span class="caps">Product</span><select data-k="c.hormone">${s.hormones.map(h=>`<option value="${h.id}"${h.id===c.hormone?' selected':''}>${esc(h.n||'Untitled')}</option>`).join('')}</select><span class="tiny">Prices are on the Costs tab</span></label>`:''}</section>
 
 <section class="card">${cardHead('pan_tool','pink','Labor','')}
-  <div class="fgrid">${fld('Sticking rate','c.stickRate',{suf:'/hr',wide:true,hint:'Cuttings prepped, dipped and stuck per hour'})}${fld('Fill trays','c.fillMin',{suf:'min',hint:'Minutes per tray'})}${fld('Grade & ship','c.gradeMin',{suf:'min',hint:'Minutes per tray'})}</div>
-  <p class="foot muted note">Watering and care during rooting are in your bench rate on the Shop tab.</p>
-  <div class="calc-line"><span>Labor per tray</span><b data-o="labor">—</b></div></section>
+  <div class="fgrid">${fld('Sticking rate','c.stickRate',{suf:'/hr',wide:true,hint:'Cuttings prepped, dipped and stuck per hour'})}${fld('Fill flats','c.fillMin',{suf:'min',hint:'Per flat'})}${fld('Grade & ship','c.gradeMin',{suf:'min',hint:'Per flat'})}</div>
+  <p class="foot muted note">Watering and care while rooting are in your bench rate.</p></section>
 
-<section class="card">${cardHead('schedule','butter','Time on the bench','')}
-  <div class="fgrid">${fld('Under mist','c.mistWk',{suf:'wks',hint:'Mist and bottom heat'})}${fld('Hardening off','c.hardWk',{suf:'wks',hint:'Open bench'})}</div>
-  <div class="calc-line"><span data-o="sqftWkLine">Bench space</span><b data-o="space">—</b></div></section>
-
-<section class="card">${cardHead('check_circle','mint','Yield','')}
-  <div class="fgrid">${fld('Rooting','c.strike',{suf:'%',hint:'Cuttings that root'})}${fld('Grade-out loss','c.cull',{suf:'%',hint:'Rooted but not good enough to sell'})}</div>
-  <div class="calc-line"><span data-o="sellLine">Sellable plugs per tray</span><b data-o="sell">—</b></div></section>
-
-<section class="card">${cardHead('verified','gray','Royalty','')}
-  <div class="fgrid">${fld('Royalty per plug','c.royalty',{pre:'$',wide:true,hint:'Patented or trademarked varieties only. Leave blank if none.'})}</div></section>
+<section class="card">${cardHead('schedule','butter','Growing','')}
+  <div class="fgrid">${fld('Under mist','c.mistWk',{suf:'wks',hint:'Rooting'})}${fld('Hardening off','c.hardWk',{suf:'wks',hint:'Open bench, to finish'})}
+  ${fld('Rooting','c.strike',{suf:'%',hint:'Cuttings that root'})}${fld('Grade-out loss','c.cull',{suf:'%',hint:'Rooted but not sellable'})}
+  ${fld('Royalty per plug','c.royalty',{pre:'$',wide:true,hint:'Patented or trademarked varieties only. Blank if none.'})}</div></section>
 <div data-r="missCrop"></div>`;}
 
-/* ---------- SHOP tab ---------- */
-function vShop(){const s=S.shop,r=calc(crop());
+/* ---------- COSTS tab ---------- */
+function vCosts(){const s=S.shop,area=benchTotals().area;
   return `
-<section class="card">${cardHead('payments','pink','Labor','Used for sticking, harvesting and collecting.')}<div class="fgrid">${fld('Hourly wage','shop.wage',{pre:'$',suf:'/hr',wide:true,hint:'Include payroll taxes if you pay them'})}</div></section>
+<section class="card">${cardHead('payments','pink','Labor','')}<div class="fgrid">${fld('Hourly wage','shop.wage',{pre:'$',suf:'/hr',wide:true,hint:'Include payroll taxes if you pay them'})}</div></section>
 
-<section class="card">${cardHead('table_rows','sky','Benches','Every flat is a standard 1020.')}
-  <div class="fgrid">${fld('Flat length','shop.flatL',{suf:'in'})}${fld('Flat width','shop.flatW',{suf:'in'})}</div>
-  <p class="foot muted note">Measure outside the rim. 1020 flats run about 21–21.5 × 10.5–11 in depending on the maker.</p>
-  ${S.shop.benches.map((b,i)=>`<div class="bench" data-bench="${i}">
-    <div class="bench-top"><div class="seg"><button class="${b.type!=='open'?'on':''}" data-a="benchType:${i}:mist">Mist</button><button class="${b.type==='open'?'on':''}" data-a="benchType:${i}:open">Open</button></div>
-      <span class="bench-sp"></span><button class="icon-sm" data-a="delBench:${i}" aria-label="Remove bench"><span class="ms sm">close</span></button></div>
-    <div class="fgrid three">${fld('Length','shop.benches.'+i+'.len',{suf:'ft'})}${fld('Width','shop.benches.'+i+'.wid',{suf:'ft'})}${fld('How many','shop.benches.'+i+'.count',{})}</div><p class="foot fit-line" data-o="fit${i}"></p></div>`).join('')}
-  <div class="btn-row"><button class="chip" data-a="addBench:mist"><span class="ms sm">add</span>Mist bench</button><button class="chip" data-a="addBench:open"><span class="ms sm">add</span>Open bench</button></div>
-  <div class="kv" style="margin-top:8px"><span>Mist bench flats</span><b data-o="mistFlats">—</b></div><div class="kv"><span>Open bench flats</span><b data-o="openFlats">—</b></div><div class="kv"><span>Bench area</span><b data-o="benchArea">—</b></div></section>
+<section class="card">${cardHead('inventory_2','peach','Supplies','')}
+  <div class="fgrid">${fld('Potting mix','shop.mixYd',{pre:'$',suf:'/yd³',wide:true,hint:'Per cubic yard, delivered'})}${fld('Flat & insert','shop.trayPrice',{pre:'$',hint:'Each'})}${fld('Times reused','shop.trayUses',{hint:'Blank = 1'})}${fld('Tag','shop.tagPrice',{pre:'$',hint:'Each'})}</div></section>
 
-<section class="card">${cardHead('square_foot','butter','Bench rate','What one square foot of bench costs for one week.')}
+<section class="card">${cardHead('science','lav','Rooting hormone','')}
+  ${s.hormones.length?s.hormones.map((h,i)=>`<div class="h-row"><label class="fld"><span class="caps">Name</span><input type="text" data-k="shop.hormones.${i}.n" value="${esc(h.n)}" autocomplete="off"></label><label class="fld"><span class="caps">Price</span><span class="pre"><i>$</i><input type="text" inputmode="decimal" data-k="shop.hormones.${i}.price" value="${esc(h.price)}" autocomplete="off" aria-label="${esc(h.n)} container price"></span></label><label class="fld"><span class="caps">Cuttings</span><input type="text" inputmode="decimal" data-k="shop.hormones.${i}.per" value="${esc(h.per)}" autocomplete="off" aria-label="${esc(h.n)} cuttings per container"></label><button class="icon-sm" data-a="delHorm:${i}" aria-label="Remove ${esc(h.n)}"><span class="ms sm">close</span></button></div>`).join(''):'<p class="foot muted empty-note">No products yet.</p>'}
+  <p class="foot muted note">Cuttings = how many one container treats.</p>
+  <div class="btn-row"><button class="chip" data-a="addHorm"><span class="ms sm">add</span>Add a product</button></div></section>
+
+<section class="card">${cardHead('square_foot','butter','Bench rate','One square foot of bench for one week.')}
   <div class="seg full"><button class="${s.rateMode==='calc'?'on':''}" data-a="rateMode:calc">Figure it</button><button class="${s.rateMode==='direct'?'on':''}" data-a="rateMode:direct">I know my rate</button></div>
   ${s.rateMode==='calc'?`<div class="sec-h static"><span class="caps muted">Yearly facility costs</span></div>
     ${s.costs.map((x,i)=>`<div class="cost-row"><input type="text" inputmode="text" data-k="shop.costs.${i}.n" value="${esc(x.n)}" aria-label="Cost name" autocomplete="off"><span class="pre"><i>$</i><input type="text" inputmode="decimal" data-k="shop.costs.${i}.v" value="${esc(x.v)}" aria-label="${esc(x.n)} per year" placeholder="per year" autocomplete="off"></span><button class="icon-sm" data-a="delCost:${i}" aria-label="Remove ${esc(x.n)}"><span class="ms sm">close</span></button></div>`).join('')}
     <div class="btn-row"><button class="chip" data-a="addCost"><span class="ms sm">add</span>Add a cost</button></div>
-    <div class="fgrid three" style="margin-top:14px">${benchTotals().area>0?`<label class="fld"><span class="caps">Bench area</span><span class="calc-line" style="margin:0;padding:9px 11px"><b data-o="benchArea2" class="dim">—</b></span><span class="tiny">From your benches</span></label>`:fld('Bench area','shop.benchSqft',{suf:'sq ft',hint:'Or add benches above'})}${fld('In use','shop.occ',{suf:'%',hint:'Average'})}${fld('Production','shop.weeks',{suf:'wks',hint:'Per year'})}</div>
-    <div class="calc-line"><span>Yearly costs <span data-o="costSum"></span></span><b data-o="rate">—</b></div>`
+    <div class="fgrid">${fld('Bench in use','shop.occ',{suf:'%',wide:true,hint:'Average share of bench space filled'})}</div>
+    <div class="kv" style="margin-top:8px"><span>Yearly costs</span><b data-o="costSum">—</b></div>
+    <div class="kv"><span>Bench area</span><b>${area>0?n1(area,1)+' sq ft':`<button class="link" data-a="jump:shop.benches.0.len|benches">Add benches</button>`}</b></div>
+    <div class="kv"><span>Weeks a year</span><b>${n1(Math.min(52,opt(s.weeks)||52),0)} <button class="link" data-a="jump:shop.weeks|benches">Change</button></b></div>`
   :`<div class="fgrid">${fld('Open bench rate','shop.rateDirect',{pre:'$',wide:true,hint:'Per square foot per week'})}</div>`}
-  <div class="fgrid">${fld('Mist & bottom heat add-on','shop.mistAdd',{pre:'$',wide:true,hint:'Extra per sq ft per week on the mist bench: heat mats, mist water, power. Leave blank if none.'})}</div>
-  <div class="kv" style="margin-top:8px"><span>Open bench</span><b data-o="rateOpen">—</b></div><div class="kv"><span>Mist bench</span><b data-o="rateMist">—</b></div></section>
+  <div class="fgrid">${fld('Mist & bottom heat add-on','shop.mistAdd',{pre:'$',wide:true,hint:'Extra per sq ft per week on mist: heat mats, mist water, power. Blank if none.'})}</div>
+  <div class="tot-line"><span class="callout">Open bench</span><b class="num" data-o="rateOpen">—</b></div><div class="kv"><span>Mist bench</span><b data-o="rateMist">—</b></div></section>
 
-<section class="card">${cardHead('inventory_2','peach','Supplies','Prices shared by every crop.')}
-  <div class="fgrid">${fld('Media, per bag','shop.mediaPrice',{pre:'$'})}${fld('Tag, each','shop.tagPrice',{pre:'$'})}${fld('Tray, each','shop.trayPrice',{pre:'$',hint:'Flat plus cell insert'})}${fld('Tray uses','shop.trayUses',{hint:'Times reused. Blank = 1'})}</div></section>
-
-<section class="card">${cardHead('science','lav','Rooting hormone products','')}
-  ${s.hormones.length?s.hormones.map((h,i)=>`<div class="h-row"><label class="fld"><span class="caps">Name</span><input type="text" data-k="shop.hormones.${i}.n" value="${esc(h.n)}" autocomplete="off"></label><label class="fld"><span class="caps">Price</span><span class="pre"><i>$</i><input type="text" inputmode="decimal" data-k="shop.hormones.${i}.price" value="${esc(h.price)}" autocomplete="off" aria-label="${esc(h.n)} container price"></span></label><label class="fld"><span class="caps">Cuttings</span><input type="text" inputmode="decimal" data-k="shop.hormones.${i}.per" value="${esc(h.per)}" autocomplete="off" aria-label="${esc(h.n)} cuttings per container"></label><button class="icon-sm" data-a="delHorm:${i}" aria-label="Remove ${esc(h.n)}"><span class="ms sm">close</span></button></div>`).join(''):'<p class="foot muted empty-note">No products yet.</p>'}
-  <p class="foot muted note">Cuttings = how many cuttings one container treats.</p>
-  <div class="btn-row"><button class="chip" data-a="addHorm"><span class="ms sm">add</span>Add a product</button></div></section>
-
-<section class="card">${cardHead('percent','mint','Target margin','For the suggested price on the Price tab.')}
+<section class="card">${cardHead('percent','mint','Target margin','For the suggested price.')}
   <div class="slider"><div class="slider-lab"><span class="foot">Profit as a share of the sale price</span><span class="badge" data-o="tm2">${Math.round(opt(s.margin))}%</span></div><input class="range" type="range" min="0" max="80" step="1" value="${opt(s.margin)}" data-k="shop.margin" aria-label="Target margin"></div></section>
 <div data-r="missShop"></div>`;}
+
+/* ---------- BENCHES tab ---------- */
+function vBenches(){const s=S.shop;
+  return `
+<section class="card">${cardHead('grid_on','sky','Flat size','Every flat is a standard 1020.')}
+  <div class="fgrid">${fld('Length','shop.flatL',{suf:'in'})}${fld('Width','shop.flatW',{suf:'in'})}</div>
+  <p class="foot muted note">Measure outside the rim. 1020 flats run about 21–21.5 × 10.5–11 in depending on the maker.</p></section>
+
+<section class="card">${cardHead('table_rows','lav','Benches','')}
+  ${s.benches.length?'':'<p class="foot muted empty-note">No benches yet.</p>'}
+  ${s.benches.map((b,i)=>`<div class="bench" data-bench="${i}">
+    <div class="bench-top"><div class="seg"><button class="${b.type!=='open'?'on':''}" data-a="benchType:${i}:mist">Mist</button><button class="${b.type==='open'?'on':''}" data-a="benchType:${i}:open">Open</button></div>
+      <span class="bench-sp"></span><button class="icon-sm" data-a="delBench:${i}" aria-label="Remove bench"><span class="ms sm">close</span></button></div>
+    <div class="fgrid three">${fld('Length','shop.benches.'+i+'.len',{suf:'ft'})}${fld('Width','shop.benches.'+i+'.wid',{suf:'ft'})}${fld('How many','shop.benches.'+i+'.count',{})}</div><p class="foot fit-line" data-o="fit${i}"></p></div>`).join('')}
+  <div class="btn-row"><button class="chip" data-a="addBench:mist"><span class="ms sm">add</span>Mist bench</button><button class="chip" data-a="addBench:open"><span class="ms sm">add</span>Open bench</button></div>
+  <div class="fgrid">${fld('Weeks you grow per year','shop.weeks',{suf:'wks',wide:true})}</div>
+  <div class="tot-line"><span class="callout">Flats at once</span><b class="num" data-o="benchFlats">—</b></div>
+  <div class="kv"><span>Bench area</span><b data-o="benchArea">—</b></div></section>
+<div data-r="missBench"></div>`;}
 
 /* ---------- PLAN tab ---------- */
 function vPlan(){const c=crop();
   return pills()+`
 <section class="card hero" aria-label="Order">
-  <div class="hero-top"><div class="hero-l"><span class="caps muted">Order</span><span class="foot muted">Steppers add or remove one tray</span></div>
-    <div class="stepper"><button data-a="qty:-1" aria-label="One tray fewer"><span class="ms">remove</span></button><button data-a="qty:1" aria-label="One tray more"><span class="ms">add</span></button></div></div>
+  <div class="hero-top"><div class="hero-l"><span class="caps muted">Order</span><span class="foot muted">Steppers add or remove one flat</span></div>
+    <div class="stepper"><button data-a="qty:-1" aria-label="One flat fewer"><span class="ms">remove</span></button><button data-a="qty:1" aria-label="One flat more"><span class="ms">add</span></button></div></div>
   <div class="fgrid"><label class="fld big-in"><span class="caps">Plugs needed</span><input type="text" inputmode="numeric" data-k="plan.qty" value="${esc(S.plan.qty)}" placeholder="0" autocomplete="off" aria-label="Plugs needed"></label>
     <label class="fld big-in"><span class="caps">Ship date</span><input class="date-in" type="date" data-k="plan.ship" value="${esc(S.plan.ship)}" aria-label="Ship date"></label></div>
 </section>
@@ -804,23 +801,22 @@ function planCalc(c,r){const q=Math.round(opt(S.plan.qty));if(!(q>0))return null
     else{out.stick=new Date();out.move=addDays(out.stick,r.mw*7);out.ready=addDays(out.stick,wks*7);out.noShip=true;}}
   return out;}
 function planHTML(c,r){const p=planCalc(c,r);
-  if(!p)return `<section class="card"><p class="callout muted">Enter how many plugs you need to see trays, cuttings, dates and labor.</p></section>`;
+  if(!p)return `<section class="card"><p class="callout muted">Enter how many plugs you need to see flats, cuttings, dates and labor.</p></section>`;
   if(!p.trays)return missCard(r)||`<section class="card"><p class="callout muted">Fill in cells and rooting % for this crop first.</p></section>`;
   const kv=(ic,l,v)=>`<div class="kv"><span><span class="ms">${ic}</span>${l}</span><b>${v}</b></div>`;
   return `<section class="tiles" aria-label="Order size">
-    <div class="tile tn-butter"><div class="tile-h"><span class="caps">Trays</span></div><div class="tile-v bodyE num">${p.trays}</div><div class="tiny">to stick</div></div>
+    <div class="tile tn-butter"><div class="tile-h"><span class="caps">Flats</span></div><div class="tile-v bodyE num">${p.trays}</div><div class="tiny">to stick</div></div>
     <div class="tile tn-mint"><div class="tile-h"><span class="caps">Cuttings</span></div><div class="tile-v bodyE num">${p.cuts.toLocaleString('en-US')}</div><div class="tiny">to take</div></div>
-    <div class="tile tn-sky"><div class="tile-h"><span class="caps">Bench</span></div><div class="tile-v bodyE num">${p.bench!=null?n1(p.bench,1):'—'}</div><div class="tiny">sq ft</div></div></section>
+    <div class="tile tn-sky"><div class="tile-h"><span class="caps">Turns</span></div><div class="tile-v bodyE num">${(()=>{const k=capacity(r);return k.batch>0?Math.ceil(p.trays/k.batch):'—';})()}</div><div class="tiny">on your benches</div></div></section>
   <section class="card">${cardHead('event','butter','Schedule',p.noShip?'If you stick today. Add a ship date to work backward.':'')}
     ${p.stick?kv('content_cut','Stick',fmtDate(p.stick)+(p.late?' <span class="neg">· past</span>':''))+kv('water_drop','Off mist',fmtDate(p.move))+kv('local_shipping',p.noShip?'Ready':'Ship',fmtDate(p.ready)):'<p class="foot muted">Add weeks under mist and hardening off on the Crop tab.</p>'}</section>
   <section class="card">${cardHead('checklist','sky','What it takes','')}
     ${kv('grid_on','Sellable plugs',n1(p.plugs,0)+(p.extra>=0.5?`<small>${n1(p.extra,0)} extra</small>`:''))}
     ${p.stock!=null?kv('park','Stock plants to cut from',p.stock+'<small>one month of growth each</small>'):''}
     ${p.boxes!=null?kv('local_shipping','Boxes of cuttings',p.boxes):''}
-    ${kv('inventory_2','Media',p.bags!=null?n1(p.bags,1)+(n1(p.bags,1)==='1'?' bag':' bags'):'—')}
+    ${kv('inventory_2','Potting mix',p.bags!=null?n1(p.bags,2)+' yd³':'—')}
     ${p.horm!=null?kv('science',esc(r.prod.n||'Hormone'),n1(p.horm,2)+' containers'):''}
     ${kv('pan_tool','Labor',p.hours!=null?n1(p.hours,1)+' hrs':'—')}
-    ${(()=>{const k=capacity(r);return k.batch>0?kv('warehouse','Bench turns',(p.trays<=k.batch?'Fits in one':Math.ceil(p.trays/k.batch)+' turns')+`<small>${k.batch} flats per turn on your benches</small>`):'';})()}
   </section>
   <section class="card">${cardHead('payments','pink','Money','')}
     ${kv('receipt_long','Cost to grow',money(p.cost))}
@@ -830,8 +826,8 @@ function planHTML(c,r){const p=planCalc(c,r);
   </section>`+missCard(r);}
 
 /* ---------- render ---------- */
-const VIEWS={price:vPrice,crop:vCrop,shop:vShop,plan:vPlan};
-const TITLES={price:'Price',crop:'Crop',shop:'Shop',plan:'Plan'};
+const VIEWS={price:vPrice,crop:vCrop,costs:vCosts,benches:vBenches,plan:vPlan};
+const TITLES={price:'Price',crop:'Crop',costs:'Costs',benches:'Benches',plan:'Plan'};
 function render(){document.body.dataset.tab=S.tab;$('#topTitle').textContent=TITLES[S.tab];
   $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===S.tab));
   $('#main').innerHTML=VIEWS[S.tab]();refresh();}
@@ -843,36 +839,26 @@ function refresh(){const c=crop(),r=calc(c);const t=S.tab;
   if(t==='price'){
     o('price',r.price!=null?money(r.price):'—');
     o('sugg',r.sugg!=null?money(Math.ceil(r.sugg*100-1e-6)/100):'—');o('tm',Math.round(r.tm*100)+'%');const sb=$('[data-o=suggBox]');if(sb)sb.hidden=r.sugg==null;
-    o('trayLine',r.sell!=null?`Tray of ${n1(r.cells,0)} · ${n1(r.sell,1)} sellable · ${r.rev!=null?money(r.rev):'—'}`:'');
-    const pb=$('[data-o=profitBadge]');if(pb){if(r.profit!=null){pb.textContent=(r.profit>=0?'+':'')+money(r.profit)+' / tray';pb.classList.toggle('neg',r.profit<0);pb.style.display='';}else pb.style.display='none';}
-    o('cpp',plug(r.perPlug));o('cppSub',r.perCut!=null?plug(r.perCut)+' per cutting':'');
-    o('ppt',money(r.profit));o('pptSub',r.profit!=null&&r.sell?plug(r.profit/r.sell)+' per plug':'');
-    o('mgn',pct(r.margin));o('mgnSub',r.price!=null&&r.perPlug!=null?'markup '+pct(r.price/r.perPlug-1):'');
-    $$('[data-o=ppt],[data-o=mgn]').forEach(e=>e.classList.toggle('neg',r.profit!=null&&r.profit<0));
+    o('costLine',r.perPlug!=null?`Costs ${plug(r.perPlug)} per plug`:'');
+    const mb=$('[data-o=mgnBadge]');if(mb){if(r.margin!=null){mb.textContent=pct(r.margin)+' margin';mb.classList.toggle('neg',r.profit<0);mb.style.display='';}else mb.style.display='none';}
     const bm=$('[data-r=miss]');if(bm)bm.innerHTML=missCard(r);
+    const bs=$('[data-r=sum]');if(bs)bs.innerHTML=summaryHTML(r);
     const bb=$('[data-r=bars]');if(bb)bb.innerHTML=barsHTML(r);
-    const by=$('[data-r=yield]');if(by)by.innerHTML=yieldHTML(r);
-    const bc=$('[data-r=cap]');if(bc)bc.innerHTML=capHTML(r);
   }else if(t==='crop'){
-    const sup=r.media!=null&&r.trayCost!=null?r.media+r.trayCost:null;
-    o('supplies',sup!=null?money(sup)+' / tray':'—');o('cpc',String(r.cpc));
-    o('unit',r.unit!=null?plug(r.unit)+(r.cuts?' · '+money(r.cutCost!=null?r.cutCost:r.unit*r.cuts)+' / tray':''):'—');
-    o('hUnit',r.hUnit?plug(r.hUnit)+(r.hormCost!=null?' · '+money(r.hormCost)+' / tray':''):'—');
-    o('labor',r.labor!=null?money(r.labor)+' / tray':r.laborHrs!=null?n1(r.laborHrs*60,0)+' min / tray':'—');
-    o('sqftWkLine',r.sqftWk!=null&&r.mw+r.hw>0?`Bench space · ${n1(r.sqftWk,1)} sq-ft-wks`:'Bench space');
-    o('space',r.space!=null?money(r.space)+' / tray':'—');
-    o('sellLine',r.sell!=null&&r.cells?`Sellable per tray · ${pct(r.sell/r.cells)} fill`:'Sellable plugs per tray');
-    o('sell',r.sell!=null?n1(r.sell,1)+' of '+n1(r.cells,0):'—');
+    o('cpc',String(r.cpc));
     const m=$('[data-r=missCrop]');if(m)m.innerHTML=missCard(r,'crop');
-  }else if(t==='shop'){
-    o('costSum',r.costSum>0?'· '+money(r.costSum,0):'');
-    o('rate',r.R!=null?money(r.R,3)+' / sq ft / wk':'—');
+  }else if(t==='costs'){
+    o('costSum',r.costSum>0?money(r.costSum,0):'—');
     o('rateOpen',r.R!=null?money(r.R,3)+' / sq ft / wk':'—');
     o('rateMist',r.R!=null?money(r.R+r.A,3)+' / sq ft / wk':'—');
     o('tm2',Math.round(opt(S.shop.margin))+'%');
-    const bt=benchTotals();o('mistFlats',bt.mist.toLocaleString('en-US'));o('openFlats',bt.open.toLocaleString('en-US'));o('benchArea',bt.area>0?n1(bt.area,1)+' sq ft':'—');o('benchArea2',n1(bt.area,1)+' sq ft');
+    const m=$('[data-r=missShop]');if(m)m.innerHTML=missCard(r,'costs');
+  }else if(t==='benches'){
+    const bt=benchTotals();
+    o('benchFlats',bt.mist+bt.open>0?`${bt.mist.toLocaleString('en-US')} mist · ${bt.open.toLocaleString('en-US')} open`:'—');
+    o('benchArea',bt.area>0?n1(bt.area,1)+' sq ft':'—');
     S.shop.benches.forEach((b,i)=>{const f=fits(b),n=Math.max(0,Math.round(opt(b.count)));o('fit'+i,f?`${f} flats each${n>1?' · '+(f*n).toLocaleString('en-US')+' total':''}`:'');});
-    const m=$('[data-r=missShop]');if(m)m.innerHTML=missCard(r,'shop');
+    const m=$('[data-r=missBench]');if(m)m.innerHTML=missCard(r,'benches');
   }else if(t==='plan'){const p=$('[data-r=plan]');if(p)p.innerHTML=planHTML(c,r);}
 }
 function syncSame(t){$$(`[data-k="${t.dataset.k}"]`).forEach(e=>{if(e!==t&&document.activeElement!==e)e.value=get(t.dataset.k)===''&&e.type==='range'?0:get(t.dataset.k);});}
@@ -890,7 +876,6 @@ document.addEventListener('change',e=>{const t=e.target;
   if(t.id==='fileIn'&&t.files&&t.files[0])restore(t.files[0]);});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type!=='file')e.target.blur();});
 document.addEventListener('focusout',e=>{if(e.target.closest&&e.target.closest('#priceIn'))setTimeout(closePriceEdit,0);
-  if(e.target.dataset&&/^shop\.benches\./.test(e.target.dataset.k||'')&&S.tab==='shop'){const had=!!$('[data-o=benchArea2]');if(had!==(benchTotals().area>0))setTimeout(()=>{if(!document.activeElement||!document.activeElement.dataset||!document.activeElement.dataset.k)render();},0);}
   if(e.target.dataset&&e.target.dataset.k==='c.name'){const p=$('.pill.on .t');if(p)p.textContent=crop().name||'Untitled';}});
 function closePriceEdit(){const pi=$('#priceIn'),mb=$('.metric-btn');if(pi&&pi.classList.contains('on')){pi.classList.remove('on');if(mb)mb.classList.remove('off');refresh();const rg=$('input[type=range][data-k="c.price"]');if(rg)rg.value=opt(crop().price);}}
 
@@ -929,7 +914,7 @@ function act(a,arg,b){const c=crop();
   case 'xlsx':closeSheet();exportXLSX();break;
   case 'backup':closeSheet();backup();break;
   case 'restore':closeSheet();$('#fileIn').value='';$('#fileIn').click();break;
-  case 'reset':closeSheet();if(confirm('Erase every crop and Shop setting on this device?')&&confirm('This can\'t be undone. Erase everything?')){S=defaults();saveNow();render();toast('Started fresh');}break;
+  case 'reset':closeSheet();if(confirm('Erase every crop, cost and bench on this device?')&&confirm('This can\'t be undone. Erase everything?')){S=defaults();saveNow();render();toast('Started fresh');}break;
   }}
 
 /* ---------- sheet ---------- */
@@ -938,20 +923,21 @@ function closeSheet(){$('#sheet').classList.remove('on');$('#sheet').setAttribut
 function item(a,ic,tone,t,sub,cls){return `<button class="s-item${cls?' '+cls:''}" data-a="${a}"><span class="ic tn-${tone}"><span class="ms" aria-hidden="true">${ic}</span></span><span class="txt">${t}<small>${sub}</small></span></button>`;}
 function presetSub(p){const w=[];if(+p.mistWk)w.push(p.mistWk+' wks to root');if(+p.hardWk)w.push(p.hardWk+' to harden and finish');if(!p.hormone)w.push('no hormone');return w.join(' · ');}
 function openMenu(){openSheet(`<h3>Menu</h3>
-  <div class="caps s-cap">Share</div><div class="s-group">${item('pdf','picture_as_pdf','pink','Price list PDF','Every crop, with cost breakdowns')}${item('xlsx','table_view','mint','Excel workbook','Prices, costs and your Shop numbers')}</div>
+  <div class="caps s-cap">Share</div><div class="s-group">${item('pdf','picture_as_pdf','pink','Price list PDF','Every crop, with cost breakdowns')}${item('xlsx','table_view','mint','Excel workbook','Prices, costs and benches')}</div>
   <div class="caps s-cap">Your data</div><div class="s-group">${item('backup','download','sky','Save a backup','A file you can restore on any device')}${item('restore','upload','lav','Restore a backup','Replaces what\'s on this device')}</div>
   <div class="s-group">${item('howto','help','butter','How the math works','Square-foot-weeks, bench turns, fill rate, margin')}${item('reset','restart_alt','pink','Start fresh','Erase everything on this device','danger')}</div>
   <button class="cancel" data-a="closeSheet">Done</button>`,'Menu');}
 function openHowto(){openSheet(`<h3>How the math works</h3><div class="howto">
-  <h4>Everything is figured per tray</h4><p>Cuttings, hormone, media, trays and tags, labor and bench space add up to the cost of one tray.</p>
+  <h4>Everything is figured per flat</h4><p>Cuttings, hormone, potting mix, the flat and tags, labor and bench space add up to the cost of one flat.</p>
+  <div class="f">Potting mix per flat = price per cubic yard ÷ flats per cubic yard</div>
   <h4>Bench space</h4><p>A square-foot-week is one square foot of bench for one week. Your yearly facility costs are divided by every square-foot-week you have to sell.</p>
   <div class="f">Bench rate = yearly costs ÷ (bench sq ft × % in use × weeks)</div>
-  <div class="f">Space per tray = footprint × (mist weeks × mist rate + hardening weeks × open rate)</div>
+  <div class="f">Space per flat = flat size × (mist weeks × mist rate + hardening weeks × open rate)</div>
   <h4>Cuttings</h4><p><b>Mother stock:</b> the plant's cost spread over the months you cut from it, plus monthly upkeep, divided by cuttings per month, plus harvest time.</p>
   <div class="f">(plant cost ÷ months + upkeep) ÷ cuttings per month + wage ÷ harvest rate</div>
   <p style="margin-top:8px"><b>Bought in:</b> (box price + freight) ÷ cuttings per box. <b>Collected:</b> wage ÷ collecting rate, plus trip cost ÷ cuttings per trip.</p>
-  <h4>Only sellable plugs pay</h4><p>Cuttings that don't root and plugs you grade out still used space and labor, so the tray's cost is divided by what you can sell.</p>
-  <div class="f">Sellable = cells × rooting % × (1 − grade-out %)<br>Cost per plug = cost per tray ÷ sellable</div>
+  <h4>Only sellable plugs pay</h4><p>Cuttings that don't root and plugs you grade out still used space and labor, so the flat's cost is divided by what you can sell.</p>
+  <div class="f">Sellable = cells × rooting % × (1 − grade-out %)<br>Cost per plug = cost per flat ÷ sellable</div>
   <h4>Bench turns</h4><p>Each bench holds as many 1020 flats as fit, turned whichever way fits more. Every few weeks a batch comes off mist and moves to the open benches, so the mist bench refills on the same schedule.</p>
   <div class="f">Flats per turn = the smaller of mist-bench flats or open-bench flats<br>Turn every = weeks under mist<br>Flats per year = flats per turn × turns in your production weeks</div>
   <p style="margin-top:8px">If hardening off takes longer than rooting, the open benches have to hold more than one batch at a time, and the turn size shrinks to fit.</p>
@@ -974,29 +960,29 @@ function exportPDF(){const J=window.jspdf;if(!J||!J.jsPDF){toast('Connect to the
   doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text('Plug price list',40,52);
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(110);doc.text(new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),40,68);doc.setTextColor(0);
   const R=rows();
-  doc.autoTable({startY:84,head:[['Crop','Cuttings','Tray','Sellable','Cost / plug','Price / plug','Tray sells for','Margin','Flats / yr','Income / yr']],
+  doc.autoTable({startY:84,head:[['Crop','Cuttings','Flat','Sellable','Cost / plug','Price / plug','Flat sells for','Margin','Flats / yr','Income / yr']],
     body:R.map(({c,r})=>{const k=capacity(r);return [c.name||'Untitled',srcLabel(c)+(r.prod?' + hormone':''),n1(r.cells,0)+' cells',r.sell!=null?n1(r.sell,1):'—',plug(r.perPlug),r.price!=null?money(r.price):'—',money(r.rev),pct(r.margin),k.flats?k.flats.toLocaleString('en-US'):'—',money(k.rev,0)];}),
     styles:{fontSize:9,cellPadding:5},headStyles:{fillColor:[17,17,20]},alternateRowStyles:{fillColor:[247,247,249]}});
   R.forEach(({c,r})=>{let y=doc.lastAutoTable.finalY+26;if(y>640){doc.addPage();y=52;}
     doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(c.name||'Untitled',40,y);
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(110);
-    doc.text([r.cells!=null?n1(r.cells,0)+'-cell tray':'',r.cpc+' cutting'+(r.cpc>1?'s':'')+' per cell',SRC[c.src].n.toLowerCase()+(r.prod?' + '+(r.prod.n||'hormone'):''),r.mw+r.hw>0?n1(r.mw+r.hw,1)+' weeks':'',r.st!=null?n1(r.st,0)+'% rooting':'',r.cl?n1(r.cl,0)+'% grade-out':''].filter(Boolean).join(' · '),40,y+13);doc.setTextColor(0);
-    doc.autoTable({startY:y+20,tableWidth:W-80,head:[['Cost per tray','$','Share']],
+    doc.text([r.cells!=null?n1(r.cells,0)+'-cell flat':'',r.cpc+' cutting'+(r.cpc>1?'s':'')+' per cell',SRC[c.src].n.toLowerCase()+(r.prod?' + '+(r.prod.n||'hormone'):''),r.mw+r.hw>0?n1(r.mw+r.hw,1)+' weeks':'',r.st!=null?n1(r.st,0)+'% rooting':'',r.cl?n1(r.cl,0)+'% grade-out':''].filter(Boolean).join(' · '),40,y+13);doc.setTextColor(0);
+    doc.autoTable({startY:y+20,tableWidth:W-80,head:[['Cost per flat','$','Share']],
       body:[...r.parts.map(p=>[p.n,p.v!=null?money(p.v):'needs info',p.v!=null&&r.total?pct(p.v/r.total):'']),['Total',money(r.total),''],['Per sellable plug',plug(r.perPlug),'']],
       styles:{fontSize:9,cellPadding:4},headStyles:{fillColor:[60,60,68]},columnStyles:{1:{halign:'right'},2:{halign:'right'}},
       didParseCell:d=>{if(d.section==='body'&&d.row.index>=r.parts.length)d.cell.styles.fontStyle='bold';}});});
   deliver(doc.output('blob'),'plug-price-list-'+today()+'.pdf');}
 function exportXLSX(){if(!window.XLSX){toast('Connect to the internet once to load Excel export');return;}
   const X=window.XLSX,wb=X.utils.book_new(),R=rows();
-  const pl=[['Crop','Cutting source','Hormone','Cells','Cuttings per cell','Sellable plugs','Weeks','Cost per tray','Cost per plug','Price per plug','Tray revenue','Profit per tray','Margin','Flats per turn','Turn every (wks)','Flats per year','Income per year','Profit per year']];
+  const pl=[['Crop','Cutting source','Hormone','Cells','Cuttings per cell','Sellable plugs','Weeks','Cost per flat','Cost per plug','Price per plug','Flat revenue','Profit per flat','Margin','Flats per turn','Turn every (wks)','Flats per year','Income per year','Profit per year']];
   R.forEach(({c,r})=>{const k=capacity(r);pl.push([c.name,srcLabel(c),r.prod?r.prod.n:'None',r.cells,r.cpc,r.sell!=null?+r.sell.toFixed(2):'',r.mw+r.hw,r.total!=null?+r.total.toFixed(2):'',r.perPlug!=null?+r.perPlug.toFixed(4):'',r.price!=null?r.price:'',r.rev!=null?+r.rev.toFixed(2):'',r.profit!=null?+r.profit.toFixed(2):'',r.margin!=null?+r.margin.toFixed(4):'',k.batch>0?k.batch:'',k.batch>0?k.every:'',k.flats||'',k.rev!=null?Math.round(k.rev):'',k.profit!=null?Math.round(k.profit):'']);});
   const ws1=X.utils.aoa_to_sheet(pl);ws1['!cols']=pl[0].map((h,i)=>({wch:i===0?24:14}));X.utils.book_append_sheet(wb,ws1,'Price list');
-  const bd=[['Crop','Cost item','Per tray','Per sellable plug']];
+  const bd=[['Crop','Cost item','Per flat','Per sellable plug']];
   R.forEach(({c,r})=>{r.parts.forEach(p=>bd.push([c.name,p.n,p.v!=null?+p.v.toFixed(2):'needs info',p.v!=null&&r.sell?+(p.v/r.sell).toFixed(4):'']));bd.push([c.name,'Total',r.total!=null?+r.total.toFixed(2):'',r.perPlug!=null?+r.perPlug.toFixed(4):'']);bd.push([]);});
   const ws2=X.utils.aoa_to_sheet(bd);ws2['!cols']=[{wch:24},{wch:26},{wch:12},{wch:16}];X.utils.book_append_sheet(wb,ws2,'Cost breakdown');
   const s=S.shop,sr=calc(crop());
-  const sh=[['Shop setting','Value'],['Hourly wage',num(s.wage)||''],['Bench rate ($/sq ft/week)',sr.R!=null?+sr.R.toFixed(4):''],['Mist add-on ($/sq ft/week)',opt(s.mistAdd)],['Media per bag',num(s.mediaPrice)||''],['Tray each',num(s.trayPrice)||''],['Tray uses',num(s.trayUses)||1],['Tag each',num(s.tagPrice)||''],['Target margin',opt(s.margin)/100],['Flat size (in)',`${s.flatL} × ${s.flatW}`],...s.benches.map(b=>[`${b.type==='open'?'Open':'Mist'} bench ${b.len}×${b.wid} ft × ${b.count||0}`,fits(b)*Math.max(0,Math.round(opt(b.count)))+' flats']),[],['Yearly facility cost','Amount'],...s.costs.map(x=>[x.n,num(x.v)||'']),['Bench sq ft',num(s.benchSqft)||''],['% in use',num(s.occ)||''],['Production weeks',num(s.weeks)||''],[],['Rooting hormone','Price','Cuttings per container'],...s.hormones.map(h=>[h.n,num(h.price)||'',num(h.per)||''])];
-  const ws3=X.utils.aoa_to_sheet(sh);ws3['!cols']=[{wch:32},{wch:14},{wch:22}];X.utils.book_append_sheet(wb,ws3,'Shop');
+  const sh=[['Setting','Value'],['Hourly wage',num(s.wage)||''],['Bench rate ($/sq ft/week)',sr.R!=null?+sr.R.toFixed(4):''],['Mist add-on ($/sq ft/week)',opt(s.mistAdd)],['Potting mix per cu yd',num(s.mixYd)||''],['Flat & insert each',num(s.trayPrice)||''],['Flat reuses',num(s.trayUses)||1],['Tag each',num(s.tagPrice)||''],['Target margin',opt(s.margin)/100],['Flat size (in)',`${s.flatL} × ${s.flatW}`],...s.benches.map(b=>[`${b.type==='open'?'Open':'Mist'} bench ${b.len}×${b.wid} ft × ${b.count||0}`,fits(b)*Math.max(0,Math.round(opt(b.count)))+' flats']),[],['Yearly facility cost','Amount'],...s.costs.map(x=>[x.n,num(x.v)||'']),['Bench sq ft',+benchTotals().area.toFixed(1)],['% in use',num(s.occ)||''],['Production weeks',num(s.weeks)||''],[],['Rooting hormone','Price','Cuttings per container'],...s.hormones.map(h=>[h.n,num(h.price)||'',num(h.per)||''])];
+  const ws3=X.utils.aoa_to_sheet(sh);ws3['!cols']=[{wch:32},{wch:14},{wch:22}];X.utils.book_append_sheet(wb,ws3,'Costs & benches');
   const out=X.write(wb,{type:'array',bookType:'xlsx'});
   deliver(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'plug-pricing-'+today()+'.xlsx');}
 function backup(){saveNow();deliver(new Blob([JSON.stringify({app:'Plug',saved:new Date().toISOString(),data:S},null,1)],{type:'application/json'}),'plug-backup-'+today()+'.json');}
