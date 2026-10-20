@@ -1,6 +1,6 @@
-// Liner – offline support. Tries the internet first so updates show right away,
+// Plug – offline support. Tries the internet first so updates show right away,
 // and falls back to the saved copy when there's no signal.
-const CACHE = 'liner-v1';
+const CACHE = 'plug-v1';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(
@@ -8,7 +8,7 @@ self.addEventListener('install', e => {
   )));
 });
 self.addEventListener('activate', e => e.waitUntil(
-  caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('liner-') && k !== CACHE).map(k => caches.delete(k))))
+  caches.keys().then(ks => Promise.all(ks.filter(k => (k.startsWith('plug-') || k.startsWith('liner-')) && k !== CACHE).map(k => caches.delete(k))))
     .then(() => self.clients.claim())
 ));
 self.addEventListener('fetch', e => {
