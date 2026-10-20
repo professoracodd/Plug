@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#0b1b36">
 <title>Plug · Pricing &amp; Planning</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -465,6 +465,55 @@ input.flash{animation:flash 1.4s ease 2}
 .fit-line{margin-top:8px;color:var(--good);font-weight:600}
 .fit-line:empty{display:none}
 .big-in input{font-size:22px;line-height:28px;font-weight:700;padding:8px 12px}
+
+/* ---------- dark blue theme ---------- */
+:root{
+  --primary:#93c5fd;--primary-container:#93c5fd;--primary-fixed-dim:#93c5fd;--secondary:#bfdbfe;
+  --surface:#0b1b36;--page:#0b1b36;--hero-bg:#11264a;--sc-lowest:#11264a;--sc-low:#162f5a;--sc:#1c3a6c;--sc-high:#24477f;--sc-highest:#2e5592;
+  --on-surface:#ffffff;--on-sv:#d3def2;--muted-2:rgba(211,222,242,.72);--outline:#4a6a9e;--outline-v:#24477f;
+  --line:rgba(170,200,255,.16);--bar-bg:rgba(11,27,54,.86);--glass:rgba(255,255,255,.05);--tint:rgba(147,197,253,.2);
+  --grad:linear-gradient(90deg,#3b82f6,#93c5fd,#e0f2fe);
+  --pink:rgba(147,197,253,.08);--pink-ink:#bfdbfe;--pink-line:rgba(147,197,253,.45);
+  --mint:rgba(147,197,253,.08);--mint-ink:#bfdbfe;--mint-line:rgba(147,197,253,.45);
+  --butter:rgba(147,197,253,.08);--butter-ink:#bfdbfe;--butter-line:rgba(147,197,253,.45);
+  --sky:rgba(147,197,253,.08);--sky-ink:#bfdbfe;--sky-line:rgba(147,197,253,.45);
+  --lav:rgba(147,197,253,.08);--lav-ink:#bfdbfe;--lav-line:rgba(147,197,253,.45);
+  --peach:rgba(147,197,253,.08);--peach-ink:#bfdbfe;--peach-line:rgba(147,197,253,.45);
+  --good:#4ade80;--good-bg:rgba(74,222,128,.1);--error:#f87171;--bad-bg:rgba(248,113,113,.1);--scrim:rgba(4,12,26,.72);
+}
+body,body[data-tab]{--tc:96 165 250}
+html,body{background:var(--page)}
+.brand-name{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#fff}
+.logo{background:var(--sc);box-shadow:inset 0 0 0 1px rgba(147,197,253,.5)}
+.tn-gray{background:rgba(147,197,253,.08)!important;color:#bfdbfe!important;box-shadow:inset 0 0 0 1px rgba(147,197,253,.45)!important}
+.card{box-shadow:0 1px 0 rgba(255,255,255,.03) inset}
+.pill.on,.qchip.on{background:#fff;color:#0b1b36;border-color:#fff}
+.switch input:checked+span{background:#3b82f6}
+.range{accent-color:#60a5fa}
+.calc-line b{color:#fff}
+.fit-line{color:#bfdbfe}
+.cost{color:var(--error)!important}
+.pos{color:var(--good)!important}
+.sum-row.costs b{color:var(--error)}
+.sum-row.profit b:not(.neg){color:var(--good)}
+.bar-fill[class*="c-"]{background:#f87171}
+.bar-row .v:not(.dash){color:var(--error)}
+.edge{box-shadow:inset 0 0 0 1.5px rgb(var(--tc) / .55),inset 0 0 22px 2px rgb(var(--tc) / .3),inset 0 0 70px 6px rgb(var(--tc) / .1)}
+input.need{border-color:rgba(147,197,253,.6);background:rgba(147,197,253,.1)}
+.mchip{background:rgba(147,197,253,.1);color:#e0ecff;box-shadow:inset 0 0 0 1px rgba(147,197,253,.5)}
+.sugg b{color:#bfdbfe}
+.master,.tour-btn,.resume button,.sugg button{color:#0b1b36}
+/* folding */
+.fold-h{cursor:pointer;user-select:none;-webkit-user-select:none}
+.fold-ic{color:var(--on-sv);font-size:24px;transition:transform .2s;flex:none}
+.folded>.fold-ic,.folded .fold-btn .fold-ic,.fold-btn[aria-expanded="false"] .fold-ic{transform:rotate(-90deg)}
+.card:has(>.card-h.folded)>*:not(.card-h){display:none!important}
+.card:has(>.card-h.folded)>.card-h{padding-bottom:0;margin-bottom:0}
+.card-h.folded .card-t p{display:none}
+.bench.folded>*:not(.bench-top):not(.fit-line){display:none!important}
+.bench.folded .fit-line{margin-top:6px}
+.fold-btn{margin-left:-6px}
+.bench-top input{flex:1;min-width:0}
 </style>
 </head>
 <body data-tab="price">
@@ -539,7 +588,7 @@ function normalize(o){const d=defaults();if(!o||typeof o!=='object'||!Array.isAr
     ['hormone','flatsPerYd','tags','other'].forEach(k=>delete r[k]);return r;});
   if(!o.presets&&!crops.some(c=>/^coleus$/i.test(String(c.name).trim())))crops.push(fromPreset('coleus',s.supplies));
   const cur=crops.some(c=>c.id===o.cur)?o.cur:crops[0].id;
-  return {v:1,presets:1,tab:['price','crop','costs','benches','plan'].includes(o.tab==='shop'?'costs':o.tab)?(o.tab==='shop'?'costs':o.tab):'price',cur,crops,shop:s,plan:Object.assign({},d.plan,o.plan||{})};}
+  return {v:1,presets:1,fold:(o.fold&&typeof o.fold==='object')?o.fold:{},tab:['price','crop','costs','benches','plan'].includes(o.tab==='shop'?'costs':o.tab)?(o.tab==='shop'?'costs':o.tab):'price',cur,crops,shop:s,plan:Object.assign({},d.plan,o.plan||{})};}
 let S;try{S=normalize(JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY)));}catch(e){S=defaults();}
 let saveT;function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}},150);}
 function saveNow(){clearTimeout(saveT);try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
@@ -657,7 +706,9 @@ function calc(c){
 /* ---------- UI helpers ---------- */
 function fld(label,key,o={}){const v=get(key);
   return `<label class="fld${o.wide?' wide':''}"><span class="caps">${label}</span><span class="${o.pre?'pre':''}${o.suf?' suf':''}">${o.pre?`<i style="left:11px;right:auto">${o.pre}</i>`:''}<input type="text" inputmode="${o.text?'text':'decimal'}" data-k="${key}" value="${esc(v)}" placeholder="${esc(o.ph||'')}" autocomplete="off" enterkeyhint="done" aria-label="${esc(o.aria||label)}">${o.suf?`<i style="right:11px;left:auto">${o.suf}</i>`:''}</span>${o.hint?`<span class="tiny">${o.hint}</span>`:''}</label>`;}
-function cardHead(icon,tone,title,sub){return `<div class="card-h"><div class="card-t"><span class="card-ic tn-${tone}"><span class="ms" aria-hidden="true">${icon}</span></span><div><h2 class="title">${title}</h2>${sub?`<p class="foot muted">${sub}</p>`:''}</div></div></div>`;}
+function foldBtn(k){const f=folded(k);return `<button class="icon-sm fold-btn" data-a="foldItem:${k}" aria-label="${f?'Expand':'Collapse'}" aria-expanded="${!f}"><span class="ms sm fold-ic">expand_more</span></button>`;}
+function folded(k){return !!(S.fold&&S.fold[k]);}
+function cardHead(icon,tone,title,sub){const k=S.tab+':'+title,f=folded(k);return `<div class="card-h fold-h${f?' folded':''}" data-a="fold:${esc(k)}" role="button" tabindex="0" aria-expanded="${!f}"><div class="card-t"><span class="card-ic tn-${tone}"><span class="ms" aria-hidden="true">${icon}</span></span><div><h2 class="title">${title}</h2>${sub?`<p class="foot muted">${sub}</p>`:''}</div></div><span class="ms fold-ic" aria-hidden="true">expand_more</span></div>`;}
 function pills(){return `<section class="pills-wrap" aria-label="Crops"><div class="pills">${S.crops.map(c=>`<button class="pill${c.id===S.cur?' on':''}" data-a="crop:${c.id}"><span class="ms" aria-hidden="true">eco</span><span class="t">${esc(c.name||'Untitled')}</span></button>`).join('')}<button class="pill add" data-a="addCrop" aria-label="Add a crop"><span class="ms" aria-hidden="true">add</span></button></div></section>`;}
 function missCard(r,tab){const list=tab?r.miss.filter(x=>x.tab===tab):r.miss;if(!list.length)return '';
   return `<section class="card miss-card">${cardHead('pending_actions','butter','Still needed',tab?'Fill these in to finish the price.':'Tap one to go to it. Until these are in, the price can\'t be figured.')}<div class="miss-wrap">${list.map(x=>`<button class="mchip" data-a="jump:${x.key}|${x.tab}"><span class="ms" aria-hidden="true">${{costs:'payments',benches:'table_rows'}[x.tab]||'eco'}</span>${esc(x.label)}</button>`).join('')}</div></section>`;}
@@ -675,7 +726,7 @@ function vPrice(){const c=crop(),r=calc(c);const p=num(c.price);
   </div>
   <div class="slider"><input class="range" type="range" min="0" max="5" step="0.01" value="${isNaN(p)?0:Math.min(p,5)}" data-k="c.price" aria-label="Price per plug slider"><div class="slider-ends"><span>$0</span><span>$5.00</span></div></div>
   <div class="sugg" data-o="suggBox"${r.sugg==null?' hidden':''}><span>At your <b data-o="tm">${Math.round(r.tm*100)}%</b> target margin: <b data-o="sugg">—</b></span><button data-a="useSugg">Use</button></div>
-  <div class="seg-row"><span class="foot muted" data-o="costLine"></span><span class="glow num" data-o="mgnBadge"></span></div>
+  <div class="seg-row"><span class="foot cost" data-o="costLine"></span><span class="glow num" data-o="mgnBadge"></span></div>
 </section>
 <div data-r="miss"></div>
 <section class="card">${cardHead('summarize','sky','Summary','')}<div data-r="sum"></div></section>
@@ -689,9 +740,9 @@ function summaryHTML(r){const k=capacity(r),yr=k.batch>0;
   const row=(l,a,b,cls,na,nb)=>`<div class="sum-row${cls?' '+cls:''}"><span>${l}</span>${cell(a,na)}${cell(b,nb)}</div>`;
   let h=`<div class="sum-row sum-h"><span></span><span class="caps">Per flat</span><span class="caps">Per year</span></div>`;
   h+=row('Sellable plugs',r.sell!=null?n1(r.sell,1):'—',yr&&k.plugs!=null?Math.floor(k.plugs).toLocaleString('en-US'):'—');
-  h+=row('Cost',money(r.total),yr?money(k.cost,0):'—');
+  h+=row('Cost',money(r.total),yr?money(k.cost,0):'—','costs');
   h+=row('Income',money(r.rev),yr?money(k.rev,0):'—');
-  h+=row('Profit',money(r.profit),yr?money(k.profit,0):'—','tot',r.profit<0,yr&&k.profit<0);
+  h+=row('Profit',money(r.profit),yr?money(k.profit,0):'—','tot profit',r.profit<0,yr&&k.profit<0);
   if(yr)h+=`<p class="foot muted note">${k.batch.toLocaleString('en-US')} flats in and out every ${n1(k.every,1)} wk${k.every===1?'':'s'}, ${k.flats.toLocaleString('en-US')} flats a year. Your ${k.limit} benches set the limit.</p>`;
   else if(k.why==='weeks')h+=`<p class="foot muted note">Add weeks on the bench on the Crop tab to see the year.</p>`;
   else h+=`<p class="foot muted note">Add your ${k.why==='mist'?'mist':'open'} benches on the Benches tab to see the year.</p>`;
@@ -745,8 +796,8 @@ function vCosts(){const s=S.shop,area=benchTotals().area;
   ${fld('Flat & insert','shop.trayPrice',{pre:'$',hint:'Each'})}${fld('Times reused','shop.trayUses',{hint:'Blank = 1'})}</div></section>
 
 <section class="card">${cardHead('inventory_2','lav','Supplies','Each purchase is spread over the flats you make before you buy it again.')}
-  ${s.supplies.map((x,i)=>`<div class="bench sup">
-    <div class="bench-top"><input type="text" data-k="shop.supplies.${i}.n" value="${esc(x.n)}" placeholder="Name" aria-label="Supply name" autocomplete="off"><button class="icon-sm" data-a="delSup:${i}" aria-label="Remove ${esc(x.n||'supply')}"><span class="ms sm">close</span></button></div>
+  ${s.supplies.map((x,i)=>`<div class="bench sup${folded('i:'+x.id)?' folded':''}">
+    <div class="bench-top">${foldBtn('i:'+x.id)}<input type="text" data-k="shop.supplies.${i}.n" value="${esc(x.n)}" placeholder="Name" aria-label="Supply name" autocomplete="off"><button class="icon-sm" data-a="delSup:${i}" aria-label="Remove ${esc(x.n||'supply')}"><span class="ms sm">close</span></button></div>
     <div class="fgrid">${fld('Amount','shop.supplies.'+i+'.qty',{hint:'Per purchase. Blank = 1'})}<label class="fld"><span class="caps">Unit</span><select data-k="shop.supplies.${i}.unit" aria-label="Unit">${UNITS.map(u=>`<option${u===x.unit?' selected':''}>${u}</option>`).join('')}</select></label>
     ${fld(x.unit==='each'||!x.unit?'Price each':'Price per '+esc(x.unit),'shop.supplies.'+i+'.price',{pre:'$'})}${fld('Bought every','shop.supplies.'+i+'.months',{suf:'mo'})}</div>
     <p class="foot fit-line" data-o="sup${i}"></p></div>`).join('')}
@@ -780,8 +831,8 @@ function vBenches(){const s=S.shop;
 
 <section class="card">${cardHead('table_rows','lav','Benches','')}
   ${s.benches.length?'':'<p class="foot muted empty-note">No benches yet.</p>'}
-  ${s.benches.map((b,i)=>`<div class="bench" data-bench="${i}">
-    <div class="bench-top"><div class="seg"><button class="${b.type!=='open'?'on':''}" data-a="benchType:${i}:mist">Mist</button><button class="${b.type==='open'?'on':''}" data-a="benchType:${i}:open">Open</button></div>
+  ${s.benches.map((b,i)=>`<div class="bench${folded('i:'+b.id)?' folded':''}" data-bench="${i}">
+    <div class="bench-top">${foldBtn('i:'+b.id)}<div class="seg"><button class="${b.type!=='open'?'on':''}" data-a="benchType:${i}:mist">Mist</button><button class="${b.type==='open'?'on':''}" data-a="benchType:${i}:open">Open</button></div>
       <span class="bench-sp"></span><button class="icon-sm" data-a="delBench:${i}" aria-label="Remove bench"><span class="ms sm">close</span></button></div>
     <div class="fgrid three">${fld('Length','shop.benches.'+i+'.len',{suf:'ft'})}${fld('Width','shop.benches.'+i+'.wid',{suf:'ft'})}${fld('How many','shop.benches.'+i+'.count',{})}</div><p class="foot fit-line" data-o="fit${i}"></p></div>`).join('')}
   <div class="btn-row"><button class="chip" data-a="addBench:mist"><span class="ms sm">add</span>Mist bench</button><button class="chip" data-a="addBench:open"><span class="ms sm">add</span>Open bench</button></div>
@@ -842,9 +893,9 @@ function planHTML(c,r){const p=planCalc(c,r);
     ${kv('pan_tool','Labor',p.hours!=null?n1(p.hours,1)+' hrs':'—')}
   </section>
   <section class="card">${cardHead('payments','pink','Money','')}
-    ${kv('receipt_long','Cost to grow',money(p.cost))}
+    ${kv('receipt_long','Cost to grow',`<span class="cost">${money(p.cost)}</span>`)}
     ${kv('sell',`${p.q.toLocaleString('en-US')} plugs at ${r.price!=null?money(r.price):'your price'}`,money(p.rev))}
-    <div class="tot-line"><span class="callout">Profit</span><b class="num${p.profit<0?' neg':''}">${money(p.profit)}</b></div>
+    <div class="tot-line"><span class="callout">Profit</span><b class="num ${p.profit<0?'neg':'pos'}">${money(p.profit)}</b></div>
     ${p.extra>=0.5&&r.price!=null?`<p class="foot muted note">The ${n1(p.extra,0)} extra plugs are worth ${money(p.extra*r.price)} if you sell them too.</p>`:''}
   </section>`+missCard(r);}
 
@@ -903,7 +954,7 @@ document.addEventListener('change',e=>{const t=e.target;
   if(t.tagName==='SELECT'&&t.dataset.k){set(t.dataset.k,t.value);save();refresh();}
   if(t.dataset&&t.dataset.k==='c.price'&&t.type==='text'){const v=num(t.value);if(!isNaN(v)){crop().price=v.toFixed(2);save();}closePriceEdit();}
   if(t.id==='fileIn'&&t.files&&t.files[0])restore(t.files[0]);});
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type!=='file')e.target.blur();});
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('fold-h')){e.preventDefault();e.target.click();return;}if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type!=='file')e.target.blur();});
 document.addEventListener('focusout',e=>{if(e.target.closest&&e.target.closest('#priceIn'))setTimeout(closePriceEdit,0);
   if(e.target.dataset&&e.target.dataset.k==='c.name'){const p=$('.pill.on .t');if(p)p.textContent=crop().name||'Untitled';}});
 function closePriceEdit(){const pi=$('#priceIn'),mb=$('.metric-btn');if(pi&&pi.classList.contains('on')){pi.classList.remove('on');if(mb)mb.classList.remove('off');refresh();const rg=$('input[type=range][data-k="c.price"]');if(rg)rg.value=opt(crop().price);}}
@@ -935,6 +986,9 @@ function act(a,arg,b){const c=crop();
   case 'delSup':{const x=S.shop.supplies[+arg];if(!x)break;S.shop.supplies.splice(+arg,1);S.crops.forEach(k=>k.off=(k.off||[]).filter(id=>id!==x.id));save();render();break;}
   case 'qty':{const r=calc(c);const step=r.cells||50;const q=Math.max(0,Math.round(opt(S.plan.qty))+(+arg)*step);S.plan.qty=q?String(q):'';save();const i=$('[data-k="plan.qty"]');if(i)i.value=S.plan.qty;refresh();break;}
   case 'jump':{const [key,tab]=arg.split('|');S.tab=tab;save();render();setTimeout(()=>{const i=$(`input[data-k="${key}"]`);if(i){i.scrollIntoView({block:'center',behavior:'smooth'});i.classList.add('flash');setTimeout(()=>{i.focus({preventScroll:true});},350);setTimeout(()=>i.classList.remove('flash'),3000);}},30);break;}
+  case 'fold':{S.fold=S.fold||{};S.fold[arg]=!S.fold[arg];if(!S.fold[arg])delete S.fold[arg];save();b.classList.toggle('folded',!!S.fold[arg]);b.setAttribute('aria-expanded',String(!S.fold[arg]));break;}
+  case 'foldItem':{S.fold=S.fold||{};S.fold[arg]=!S.fold[arg];if(!S.fold[arg])delete S.fold[arg];save();const it=b.closest('.bench');if(it)it.classList.toggle('folded',!!S.fold[arg]);b.setAttribute('aria-expanded',String(!S.fold[arg]));b.setAttribute('aria-label',S.fold[arg]?'Expand':'Collapse');break;}
+  case 'foldAll':{closeSheet();S.fold=S.fold||{};const shut=arg==='1';$$('[data-a^="fold:"],[data-a^="foldItem:"]').forEach(e=>{const k=e.dataset.a.split(/:(.*)/s)[1];if(shut)S.fold[k]=true;else delete S.fold[k];});save();render();break;}
   case 'menu':openMenu();break;
   case 'howto':openHowto();break;
   case 'closeSheet':closeSheet();break;
@@ -951,6 +1005,7 @@ function closeSheet(){$('#sheet').classList.remove('on');$('#sheet').setAttribut
 function item(a,ic,tone,t,sub,cls){return `<button class="s-item${cls?' '+cls:''}" data-a="${a}"><span class="ic tn-${tone}"><span class="ms" aria-hidden="true">${ic}</span></span><span class="txt">${t}<small>${sub}</small></span></button>`;}
 function presetSub(p){const w=[];if(+p.mistWk)w.push(p.mistWk+' wks to root');if(+p.hardWk)w.push(p.hardWk+' to harden and finish');if(p.noHorm)w.push('no hormone');return w.join(' · ');}
 function openMenu(){openSheet(`<h3>Menu</h3>
+  <div class="caps s-cap">This tab</div><div class="s-group">${item('foldAll:0','unfold_more','sky','Expand all','Open every section')}${item('foldAll:1','unfold_less','sky','Collapse all','Show only section titles')}</div>
   <div class="caps s-cap">Share</div><div class="s-group">${item('pdf','picture_as_pdf','pink','Price list PDF','Every crop, with cost breakdowns')}${item('xlsx','table_view','mint','Excel workbook','Prices, costs and benches')}</div>
   <div class="caps s-cap">Your data</div><div class="s-group">${item('backup','download','sky','Save a backup','A file you can restore on any device')}${item('restore','upload','lav','Restore a backup','Replaces what\'s on this device')}</div>
   <div class="s-group">${item('howto','help','butter','How the math works','Square-foot-weeks, bench turns, fill rate, margin')}${item('reset','restart_alt','pink','Start fresh','Erase everything on this device','danger')}</div>
