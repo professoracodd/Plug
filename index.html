@@ -527,6 +527,11 @@ body.guiding main{padding-top:calc(56px + env(safe-area-inset-top,0px) + 70px)}
 .alert.warn{background:rgba(147,197,253,.1);box-shadow:inset 0 0 0 1px rgba(147,197,253,.55)}.alert.warn .ms,.alert.warn b{color:#bfdbfe}
 .alert.info{background:rgba(147,197,253,.06);box-shadow:inset 0 0 0 1px var(--line)}
 .alert-note{margin:-6px 4px 0}
+.src-cmp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}
+.src-cmp .caps{grid-column:1/-1;color:var(--on-sv)}
+.src-cmp button{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:10px;background:var(--sc-low);border:1px solid var(--line);text-align:left;font-size:12px;line-height:16px;color:var(--on-sv)}
+.src-cmp button b{font-size:15px;line-height:20px;color:#fff;font-variant-numeric:tabular-nums}
+.src-cmp button.on{border-color:#93c5fd;background:rgba(147,197,253,.12)}
 .bp-wrap{margin-top:8px;border-radius:12px;overflow:hidden;line-height:0}
 #bp{width:100%;height:auto;display:block}
 .ex-note{border-color:rgba(125,211,252,.5)}
@@ -678,8 +683,9 @@ function flatIn(){const L=num(S.shop.flatL),W=num(S.shop.flatW);return L>0&&W>0?
 function fits(b){const f=flatIn();const l=num(b.len)*12,w=num(b.wid)*12;if(!f||!(l>0)||!(w>0))return 0;
   return Math.max(Math.floor(l/f.L+1e-9)*Math.floor(w/f.W+1e-9),Math.floor(l/f.W+1e-9)*Math.floor(w/f.L+1e-9));}
 function potFit(b,pot){const d=(POTS[pot]||POTS['3']).d;const l=num(b.len)*12,w=num(b.wid)*12;if(!(l>0)||!(w>0))return 0;return Math.floor(l/d+1e-9)*Math.floor(w/d+1e-9);}
-function benchTotals(){let mist=0,open=0,area=0,stockArea=0;const pots={'1':0,'3':0,'5':0};S.shop.benches.forEach(b=>{const n=Math.max(0,Math.round(opt(b.count)));
-  if(b.type==='stock'){Object.keys(pots).forEach(k=>pots[k]+=potFit(b,k)*n);stockArea+=opt(b.len)*opt(b.wid)*n;}
+const usesStock=c=>(c||crop()).src==='stock';
+function benchTotals(withStock=true){let mist=0,open=0,area=0,stockArea=0;const pots={'1':0,'3':0,'5':0};S.shop.benches.forEach(b=>{const n=Math.max(0,Math.round(opt(b.count)));
+  if(b.type==='stock'){if(!withStock)return;Object.keys(pots).forEach(k=>pots[k]+=potFit(b,k)*n);stockArea+=opt(b.len)*opt(b.wid)*n;}
   else{const per=fits(b);if(b.type==='open')open+=per*n;else mist+=per*n;}area+=opt(b.len)*opt(b.wid)*n;});return {mist,open,area,stockArea,pots};}
 function capacity(r){const t=benchTotals();const m=r.mw,h=r.hw,out={mist:t.mist,open:t.open,m,h};
   if(!(m+h>0))return Object.assign(out,{why:'weeks'});
@@ -706,6 +712,9 @@ function stockNeed(c,r){if(c.src!=='stock'||!(r.stockK>0)||!(r.cuts>0))return nu
   if(!fit)return {need,fit,text:`Need ${need.toLocaleString('en-US')} · add a stock area on Benches`,short:true};
   return {need,fit,short:need>fit,text:`Need ${need.toLocaleString('en-US')} · room for ${fit.toLocaleString('en-US')} in ${pot} pots`};}
 
+// Cost per plug for this crop under each cutting source (only the selected one is used)
+function srcCompare(c){return Object.keys(SRC).map(k=>{const t=JSON.parse(JSON.stringify(c));t.src=k;const r=calc(t);return {k,v:r.perPlug};});}
+
 /* ---------- the costing model ---------- */
 function calc(c){
   const s=S.shop,miss=[];
@@ -717,7 +726,7 @@ function calc(c){
   if(s.rateMode==='direct'){R=need(s.rateDirect,'shop.rateDirect','Bench rate','costs');}
   else{costSum=s.costs.reduce((a,r)=>a+opt(r.v),0);
     if(!(costSum>0))miss.push({key:'shop.costs.0.v',label:'Yearly facility costs',tab:'costs'});
-    const bt=benchTotals();const sq=bt.area>0?bt.area:null;if(!sq)miss.push({key:'shop.benches.0.len',label:'Benches',tab:'benches'});const oc=need(s.occ,'shop.occ','% of bench in use','costs'),wk=need(s.weeks,'shop.weeks','Weeks you grow per year','benches');
+    const bt=benchTotals(usesStock(c));const sq=bt.area>0?bt.area:null;if(!sq)miss.push({key:'shop.benches.0.len',label:'Benches',tab:'benches'});const oc=need(s.occ,'shop.occ','% of bench in use','costs'),wk=need(s.weeks,'shop.weeks','Weeks you grow per year','benches');
     if(costSum>0&&all(sq,oc,wk))R=costSum/(sq*Math.min(oc,100)/100*Math.min(wk,52));}
   const A=opt(s.mistAdd);
   // tray
@@ -857,6 +866,7 @@ function vCrop(){const c=crop(),r=calc(c),s=S.shop;
 
 <section class="card">${cardHead(SRC[c.src].ic,'mint','Cuttings','')}
   <div class="seg full">${Object.keys(SRC).map(k=>`<button class="${c.src===k?'on':''}" data-a="src:${k}">${SRC[k].n}</button>`).join('')}</div>
+  <div class="src-cmp" data-o="srcCmp"></div>
   ${srcF[c.src]}
 </section>
 
@@ -876,7 +886,7 @@ function vCrop(){const c=crop(),r=calc(c),s=S.shop;
 /* ---------- COSTS tab ---------- */
 function exNote(){return S.example?`<section class="card ex-note"><p class="callout"><b>Example numbers are filled in</b> so the Coleus example works. Replace them with yours, or clear them. Anything you already typed in was kept.</p>
   <div class="btn-row"><button class="chip" data-a="exKeep"><span class="ms sm">check</span>Keep them</button><button class="chip danger" data-a="exClear"><span class="ms sm">delete_sweep</span>Clear examples</button></div></section>`:'';}
-function vCosts(){const s=S.shop,area=benchTotals().area;
+function vCosts(){const s=S.shop,area=benchTotals(usesStock()).area;
   return exNote()+`
 <section class="card">${cardHead('payments','pink','Labor','')}<div class="fgrid">${fld('Hourly wage','shop.wage',{pre:'$',suf:'/hr',wide:true,hint:s.ownLabor?'What your time is worth. Used to show your pay.':'Include payroll taxes if you pay them'})}</div>
   <div class="sw-row" style="margin-top:14px"><div><span class="bodyE sm blk">I do the labor myself</span><span class="foot muted">Count labor as your profit instead of a cost</span></div><label class="switch"><input type="checkbox" data-own="1"${s.ownLabor?' checked':''} aria-label="I do the labor myself"><span></span></label></div></section>
@@ -1048,7 +1058,7 @@ function applyBeacons(){$$('.beacon').forEach(e=>e.classList.remove('beacon'));c
 /* ---------- blueprint ---------- */
 function bpPot(){const c=crop();return c.src==='stock'&&POTS[c.stock.pot]?c.stock.pot:'3';}
 function bpLayout(cw){const G=[['mist','MIST BENCHES'],['open','OPEN BENCHES'],['stock','MOTHER STOCK AREA']];const all=[];
-  S.shop.benches.forEach(b=>{const n=Math.max(0,Math.round(opt(b.count))),l=num(b.len),w=num(b.wid);if(!(l>0&&w>0&&n>0))return;
+  const ws=usesStock();S.shop.benches.forEach(b=>{const n=Math.max(0,Math.round(opt(b.count))),l=num(b.len),w=num(b.wid);if(!(l>0&&w>0&&n>0))return;if(b.type==='stock'&&!ws)return;
     const t=b.type==='open'||b.type==='stock'?b.type:'mist';for(let i=0;i<n;i++)all.push({b,t,l:Math.max(l,w),w:Math.min(l,w)});});
   if(!all.length)return null;
   // page about 1.6× wider than tall: pack benches side by side, 2 ft aisles
@@ -1087,13 +1097,14 @@ function drawBlueprint(cv,cw){const L=bpLayout(cw);const f=flatIn();const pot=bp
     g.font=font(u*1.55,600);g.fillStyle='#fff';g.textBaseline='bottom';const dims=`${n1(it.l,1)}′ × ${n1(it.w,1)}′`;g.fillText(dims,x,y-u*0.35);
     const dw=g.measureText(dims).width;g.font=font(u*1.45,500);g.fillStyle='#cfe0ff';if(dw+g.measureText('  · '+label).width<w+u*2)g.fillText('  · '+label,x+dw,y-u*0.35);g.textBaseline='top';});
   // title block + scale
-  const bt=benchTotals(),ty=ch-m*0.5-u*0.6-tbH,tx=cw*0.42,tw=cw-m*0.5-u*0.6-tx;
+  const bt=benchTotals(usesStock()),ty=ch-m*0.5-u*0.6-tbH,tx=cw*0.42,tw=cw-m*0.5-u*0.6-tx;
   g.strokeStyle='#e6f0ff';g.lineWidth=Math.max(1.5,u*0.2);g.strokeRect(tx,ty,tw,tbH);g.beginPath();g.moveTo(tx,ty+tbH*0.36);g.lineTo(tx+tw,ty+tbH*0.36);g.stroke();
   g.fillStyle='#fff';g.font=font(u*2.4,800);g.fillText('PLUG',tx+u*1.5,ty+u*1.3);g.font=font(u*1.5,500);g.fillStyle='#cfe0ff';
   g.fillText(new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),tx+u*1.5+g.measureText('PLUG').width*1.7+u*2.5,ty+u*2);
   const lines=[`${bt.mist.toLocaleString('en-US')} mist · ${bt.open.toLocaleString('en-US')} open plug trays`+(bt.pots[pot]?` · ${bt.pots[pot].toLocaleString('en-US')} ${POTS[pot].n} stock pots`:''),
     `${n1(bt.area,0)} sq ft of benches · plug tray ${S.shop.flatL} × ${S.shop.flatW} in`];
-  g.fillStyle='#fff';g.font=font(u*1.6,600);lines.forEach((t,i)=>g.fillText(t,tx+u*1.5,ty+tbH*0.36+u*1.4+i*u*2.4));
+  if(!usesStock())lines.push(`${crop().name||'This crop'}: cuttings ${crop().src==='buy'?'bought in':'collected'}, no stock area`);
+  g.fillStyle='#fff';g.font=font(u*1.6,600);lines.forEach((t,i)=>{g.font=font(u*(i<2?1.6:1.4),i<2?600:500);g.fillStyle=i<2?'#fff':'#cfe0ff';g.fillText(t,tx+u*1.5,ty+tbH*0.36+u*1.4+i*u*2.4);});
   const sx=ox,sy=ty+tbH-u*3.5,len=Math.min(10,Math.floor(W/2)),sl=len*s;g.strokeStyle='#fff';g.lineWidth=Math.max(1.5,u*0.25);
   g.beginPath();g.moveTo(sx,sy);g.lineTo(sx+sl,sy);g.moveTo(sx,sy-u*0.8);g.lineTo(sx,sy+u*0.8);g.moveTo(sx+sl,sy-u*0.8);g.lineTo(sx+sl,sy+u*0.8);g.moveTo(sx+sl/2,sy-u*0.5);g.lineTo(sx+sl/2,sy+u*0.5);g.stroke();
   g.font=font(u*1.4,600);g.fillStyle='#fff';g.fillText(`${len} ft`,sx,sy+u*1.2);g.fillStyle='#cfe0ff';g.fillText('Aisles shown at 2 ft. Trays and pots drawn to scale.',sx,sy-u*3);
@@ -1124,6 +1135,7 @@ function refresh(){const c=crop(),r=calc(c);const t=S.tab;
   }else if(t==='crop'){
     o('cpc',String(r.cpc));
     {const st=stockNeed(c,r);const sl=$('[data-o=stockLine]');if(sl){sl.textContent=st?st.text:'—';sl.classList.toggle('neg',!!(st&&st.short));}}
+    {const el=$('[data-o=srcCmp]');if(el)el.innerHTML='<span class="caps">Cost per plug</span>'+srcCompare(c).map(x=>`<button class="${x.k===c.src?'on':''}" data-a="src:${x.k}"><span>${SRC[x.k].n}</span><b>${x.v!=null?plug(x.v):'needs info'}</b></button>`).join('');}
     o('mixLine',r.ydPerFlat!=null?`${n1(r.ydPerFlat*27,2)} cu ft · ${n1(r.tpb,0)} plug trays/yd³`:'—');
     const m=$('[data-r=missCrop]');if(m)m.innerHTML=missCard(r,'crop');
   }else if(t==='costs'){
@@ -1136,14 +1148,14 @@ function refresh(){const c=crop(),r=calc(c);const t=S.tab;
       o('sup'+i,p>0&&mo>0?`${money(q*p)} every ${n1(mo,1)} mo${fy.n>0?' · '+plug(q*p/(fy.n*mo/12))+' per plug tray':''}`:'');});
     const m=$('[data-r=missShop]');if(m)m.innerHTML=missCard(r,'costs');
   }else if(t==='benches'){
-    const bt=benchTotals();
+    const ws=usesStock(),bt=benchTotals(ws),cn=esc(crop().name||'this crop');
     o('benchFlats',bt.mist+bt.open>0?`${bt.mist.toLocaleString('en-US')} mist · ${bt.open.toLocaleString('en-US')} open`:'—');
     o('benchArea',bt.area>0?n1(bt.area,1)+' sq ft':'—');
     S.shop.benches.forEach((b,i)=>{const n=Math.max(0,Math.round(opt(b.count)));
-      if(b.type==='stock'){const p=Object.keys(POTS).map(k=>potFit(b,k)*n);o('fit'+i,p[0]?`Holds ${Object.keys(POTS).map((k,j)=>p[j].toLocaleString('en-US')+' '+POTS[k].n).join(' · ')} pots`:'');return;}
+      if(b.type==='stock'){if(!ws){o('fit'+i,`Not used: ${cn} ${crop().src==='buy'?'buys':'collects'} its cuttings`);return;}const p=Object.keys(POTS).map(k=>potFit(b,k)*n);o('fit'+i,p[0]?`Holds ${Object.keys(POTS).map((k,j)=>p[j].toLocaleString('en-US')+' '+POTS[k].n).join(' · ')} pots`:'');return;}
       const f=fits(b);o('fit'+i,f?`${f} plug trays each${n>1?' · '+(f*n).toLocaleString('en-US')+' total':''}`:'');});
     requestAnimationFrame(drawBpPreview);
-    o('stockPots',bt.pots['1']?Object.keys(POTS).map(k=>bt.pots[k].toLocaleString('en-US')+' '+POTS[k].n).join(' · '):'—');
+    o('stockPots',!ws?`Not used by ${cn}`:bt.pots['1']?Object.keys(POTS).map(k=>bt.pots[k].toLocaleString('en-US')+' '+POTS[k].n).join(' · '):'—');
     const m=$('[data-r=missBench]');if(m)m.innerHTML=missCard(r,'benches');
   }else if(t==='plan'){const p=$('[data-r=plan]');if(p)p.innerHTML=planHTML(c,r);}
   applyBeacons();
@@ -1185,7 +1197,7 @@ function act(a,arg,b){const c=crop();
   case 'useSugg':{const r=calc(c);if(r.sugg!=null){c.price=(Math.ceil(r.sugg*100-1e-6)/100).toFixed(2);save();render();toast('Price set to '+money(+c.price));}break;}
   case 'cells':c.cells=arg;if(c.volAuto||!c.cellVol){const cv=CELL_VOL[+arg];c.cellVol=cv?String(cv):'';c.volAuto=1;}save();render();break;
   case 'cpc':c.cpc=Math.min(5,Math.max(1,(Math.round(opt(c.cpc))||1)+(+arg)));save();refresh();o('cpc',String(c.cpc));break;
-  case 'src':c.src=arg;save();render();break;
+  case 'src':if(c.src!==arg){c.src=arg;save();render();toast(arg==='stock'?'Using mother stock. Stock area is back in.':`Using ${SRC[arg].n.toLowerCase()} cuttings. Stock area left out.`);}break;
   case 'rateMode':S.shop.rateMode=arg;save();render();break;
   case 'addCost':S.shop.costs.push({n:'',v:''});save();render();setTimeout(()=>{const i=$$('[data-k^="shop.costs."][data-k$=".n"]').pop();if(i)i.focus();},30);break;
   case 'delCost':S.shop.costs.splice(+arg,1);save();render();break;
@@ -1250,6 +1262,7 @@ function openHowto(){openSheet(`<h3>How the math works</h3><div class="howto">
   <h4>Mother stock</h4><p>Pick #1, #3 or #5 pots. The app fits pots side by side on your mother stock area (top diameters 6⅜, 10½ and 11⅞ inches) and adds each pot's bench space to the stock plant's monthly cost.</p>
   <div class="f">Stock plants needed = cuttings per month to keep the mist bench full ÷ cuttings per plant per month</div>
   <p style="margin-top:8px">If the stock area can't hold that many, yearly production drops to what your stock plants can supply.</p>
+  <p style="margin-top:8px">Only the cutting source you pick counts. If a crop buys or collects its cuttings, the mother stock area is left out of its bench rate, capacity and blueprint.</p>
   <h4>Doing the labor yourself</h4><p>Turn on "I do the labor myself" on the Costs tab and labor (sticking, filling, grading and harvesting cuttings) leaves your costs. What it would have cost shows as your labor pay, and it's included in profit.</p>
   <h4>Margin vs. markup</h4><p>Margin is profit as a share of the sale price. Markup is profit as a share of cost. A 40% margin is a 67% markup.</p>
   <div class="f">Suggested price = cost per plug ÷ (1 − target margin)</div>
@@ -1291,7 +1304,7 @@ function exportXLSX(){if(!window.XLSX){toast('Connect to the internet once to lo
   R.forEach(({c,r})=>{r.parts.forEach(p=>bd.push([c.name,p.n,p.v!=null?+p.v.toFixed(2):'needs info',p.v!=null&&r.sell?+(p.v/r.sell).toFixed(4):'']));bd.push([c.name,'Total',r.total!=null?+r.total.toFixed(2):'',r.perPlug!=null?+r.perPlug.toFixed(4):'']);bd.push([]);});
   const ws2=X.utils.aoa_to_sheet(bd);ws2['!cols']=[{wch:24},{wch:26},{wch:12},{wch:16}];X.utils.book_append_sheet(wb,ws2,'Cost breakdown');
   const s=S.shop,sr=calc(crop());
-  const sh=[['Setting','Value'],['Hourly wage',num(s.wage)||''],['Owner does the labor (counted as profit)',s.ownLabor?'Yes':'No'],['Bench rate ($/sq ft/week)',sr.R!=null?+sr.R.toFixed(4):''],['Mist add-on ($/sq ft/week)',opt(s.mistAdd)],['Potting mix per cu yd',num(s.mixYd)||''],['Packing & waste %',opt(s.pack)],['Plug trays per year (supplies)',sr.fy.n||''],['Plug tray each',num(s.trayPrice)||''],['Plug tray reuses',num(s.trayUses)||1],['Target margin',opt(s.margin)/100],['Plug tray size (in)',`${s.flatL} × ${s.flatW}`],...s.benches.map(b=>[`${b.type==='open'?'Open':'Mist'} bench ${b.len}×${b.wid} ft × ${b.count||0}`,fits(b)*Math.max(0,Math.round(opt(b.count)))+' plug trays']),[],['Yearly facility cost','Amount'],...s.costs.map(x=>[x.n,num(x.v)||'']),['Bench sq ft',+benchTotals().area.toFixed(1)],['% in use',num(s.occ)||''],['Production weeks',num(s.weeks)||''],[],['Supply','Amount per purchase','Price per unit','Bought every (months)'],...s.supplies.filter(x=>num(x.price)>0).map(x=>[x.n,(num(x.qty)>0?num(x.qty):1)+' '+x.unit,num(x.price),num(x.months)||''])];
+  const sh=[['Setting','Value'],['Hourly wage',num(s.wage)||''],['Owner does the labor (counted as profit)',s.ownLabor?'Yes':'No'],['Bench rate ($/sq ft/week)',sr.R!=null?+sr.R.toFixed(4):''],['Mist add-on ($/sq ft/week)',opt(s.mistAdd)],['Potting mix per cu yd',num(s.mixYd)||''],['Packing & waste %',opt(s.pack)],['Plug trays per year (supplies)',sr.fy.n||''],['Plug tray each',num(s.trayPrice)||''],['Plug tray reuses',num(s.trayUses)||1],['Target margin',opt(s.margin)/100],['Plug tray size (in)',`${s.flatL} × ${s.flatW}`],...s.benches.map(b=>[`${b.type==='open'?'Open':'Mist'} bench ${b.len}×${b.wid} ft × ${b.count||0}`,fits(b)*Math.max(0,Math.round(opt(b.count)))+' plug trays']),[],['Yearly facility cost','Amount'],...s.costs.map(x=>[x.n,num(x.v)||'']),['Bench sq ft',+benchTotals(usesStock()).area.toFixed(1)],['% in use',num(s.occ)||''],['Production weeks',num(s.weeks)||''],[],['Supply','Amount per purchase','Price per unit','Bought every (months)'],...s.supplies.filter(x=>num(x.price)>0).map(x=>[x.n,(num(x.qty)>0?num(x.qty):1)+' '+x.unit,num(x.price),num(x.months)||''])];
   const ws3=X.utils.aoa_to_sheet(sh);ws3['!cols']=[{wch:32},{wch:14},{wch:22}];X.utils.book_append_sheet(wb,ws3,'Costs & benches');
   const out=X.write(wb,{type:'array',bookType:'xlsx'});
   deliver(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'plug-pricing-'+today()+'.xlsx');}
