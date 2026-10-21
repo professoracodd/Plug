@@ -519,6 +519,12 @@ input.beacon,select.beacon{border-color:#7dd3fc!important}
 .g-txt small{display:block;color:var(--on-sv);font-size:12px;line-height:16px}
 .guide button{padding:6px 12px;border-radius:9px;background:transparent;color:var(--on-sv);font-weight:600;font-size:13px;box-shadow:inset 0 0 0 1px var(--line)}
 body.guiding main{padding-top:calc(56px + env(safe-area-inset-top,0px) + 70px)}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;font-size:14px;line-height:20px}
+.alert .ms{font-size:20px;flex:none;margin-top:1px}
+.alert.bad{background:rgba(248,113,113,.12);box-shadow:inset 0 0 0 1px rgba(248,113,113,.6)}.alert.bad .ms,.alert.bad b{color:#fca5a5}
+.alert.warn{background:rgba(147,197,253,.1);box-shadow:inset 0 0 0 1px rgba(147,197,253,.55)}.alert.warn .ms,.alert.warn b{color:#bfdbfe}
+.alert.info{background:rgba(147,197,253,.06);box-shadow:inset 0 0 0 1px var(--line)}
+.alert-note{margin:-6px 4px 0}
 .ex-note{border-color:rgba(125,211,252,.5)}
 .ex-note .btn-row{margin-top:10px}
 @media (prefers-reduced-motion:reduce){.beacon,.tab.beacon .ms,.g-dot{animation:none!important;box-shadow:0 0 0 3px #7dd3fc,0 0 16px 4px rgba(125,211,252,.5)!important}}
@@ -927,21 +933,34 @@ function planCalc(c,r){const t=Math.round(opt(S.plan.trays));if(!(t>0))return nu
   out.rev=r.price!=null?out.plugs*r.price:null;
   out.ownPay=r.own&&r.ownPay!=null?t*r.ownPay:null;
   out.profit=out.cost!=null&&out.rev!=null?out.rev-out.cost:null;
-  const wks=r.mw+r.hw;
-  if(wks>0){const ship=parseDate(S.plan.ship);
-    if(ship){out.stick=addDays(ship,-wks*7);out.move=addDays(out.stick,r.mw*7);out.ready=ship;out.late=out.stick<new Date(new Date().toDateString());}
-    else{out.stick=new Date();out.move=addDays(out.stick,r.mw*7);out.ready=addDays(out.stick,wks*7);out.noShip=true;}}
+  // bench space: rounds on the mist bench, and room to hold every tray at ship time
+  const bt=benchTotals(),mw=r.mw,hw=r.hw,wks=mw+hw;
+  out.mist=bt.mist;out.open=bt.open;out.noBench=!(bt.mist+bt.open>0);
+  const roundMax=mw>0?bt.mist:bt.open;
+  out.rounds=roundMax>0?Math.ceil(t/roundMax):null;
+  out.holdMax=bt.open>0?bt.open:(out.rounds===1?bt.mist:0);
+  out.over=!out.noBench&&(roundMax<=0||t>out.holdMax);
+  if(wks>0&&out.rounds){const ship=parseDate(S.plan.ship);const gap=mw>0?mw:hw;const n=out.rounds;
+    const lastStick=ship?addDays(ship,-wks*7):addDays(new Date(new Date().toDateString()),(n-1)*gap*7);
+    out.list=[];for(let k=0;k<n;k++){const st=addDays(lastStick,-(n-1-k)*gap*7);out.list.push({stick:st,move:addDays(st,mw*7),trays:k<n-1?roundMax:t-roundMax*(n-1)});}
+    out.stick=out.list[0].stick;out.ready=ship||addDays(lastStick,wks*7);out.noShip=!ship;out.late=out.stick<new Date(new Date().toDateString());}
   return out;}
 function planHTML(c,r){const p=planCalc(c,r);
   if(!p)return `<section class="card"><p class="callout muted">Enter how many plug trays the buyer wants to see plugs, cuttings, dates, labor and profit.</p></section>`;
   if(p.incomplete)return missCard(r)||`<section class="card"><p class="callout muted">Fill in cells and rooting % for this crop first.</p></section>`;
   const kv=(ic,l,v)=>`<div class="kv"><span><span class="ms">${ic}</span>${l}</span><b>${v}</b></div>`;
-  return `<section class="tiles" aria-label="Order size">
+  const alerts=[];
+  if(p.noBench)alerts.push(['info','Add your benches on the Benches tab to check whether this contract fits.']);
+  else if(p.over)alerts.push(['bad',`<b>More than you have room for.</b> All ${p.trays} plug trays have to sit on your benches until they ship, but your ${p.open>0?'open':'mist'} benches hold ${(p.holdMax||0).toLocaleString('en-US')}. Lower the order, ship it in parts, or add bench space.`]);
+  else if(p.rounds>1)alerts.push(['warn',`<b>Too many to stick at once.</b> Your mist benches hold ${p.mist.toLocaleString('en-US')} plug trays, so stick this in ${p.rounds} rounds, ${n1(r.mw||r.hw,1)} weeks apart. Earlier rounds finish early and wait on the open benches until the ship date.`]);
+  if(p.late&&p.list)alerts.push(['bad',`<b>Too late for this ship date.</b> The first round needed to be stuck by ${fmtDate(p.stick)}. Pick a later ship date or a smaller order.`]);
+  if(alerts.length&&!p.noBench)alerts.push(['note','This assumes the benches are free for this contract.']);
+  return alerts.map(x=>x[0]==='note'?`<p class="foot muted alert-note">${x[1]}</p>`:`<div class="alert ${x[0]}" role="alert"><span class="ms" aria-hidden="true">${x[0]==='bad'?'error':x[0]==='warn'?'warning':'info'}</span><p>${x[1]}</p></div>`).join('')+`<section class="tiles" aria-label="Order size">
     <div class="tile tn-butter"><div class="tile-h"><span class="caps">Plugs</span></div><div class="tile-v bodyE num">${p.plugs.toLocaleString('en-US')}</div><div class="tiny">to deliver</div></div>
     <div class="tile tn-mint"><div class="tile-h"><span class="caps">Cuttings</span></div><div class="tile-v bodyE num">${p.cuts.toLocaleString('en-US')}</div><div class="tiny">to take</div></div>
-    <div class="tile tn-sky"><div class="tile-h"><span class="caps">Turns</span></div><div class="tile-v bodyE num">${(()=>{const k=capacity(r);return k.batch>0?Math.ceil(p.trays/k.batch):'—';})()}</div><div class="tiny">on your benches</div></div></section>
-  <section class="card">${cardHead('event','butter','Schedule',p.noShip?'If you stick today. Add a ship date to work backward.':'')}
-    ${p.stick?kv('content_cut','Stick',fmtDate(p.stick)+(p.late?' <span class="neg">· past</span>':''))+kv('water_drop','Off mist',fmtDate(p.move))+kv('local_shipping',p.noShip?'Ready':'Ship',fmtDate(p.ready)):'<p class="foot muted">Add weeks under mist and hardening off on the Crop tab.</p>'}</section>
+    <div class="tile tn-sky"><div class="tile-h"><span class="caps">Rounds</span></div><div class="tile-v bodyE num${p.over?' neg':''}">${p.rounds||'—'}</div><div class="tiny">${p.over?'won\'t fit':'on your benches'}</div></div></section>
+  <section class="card">${cardHead('event','butter','Schedule',p.noShip?'Starting today. Add a ship date to work backward.':'')}
+    ${p.list?p.list.map((x,k)=>kv('content_cut',p.list.length>1?`Stick round ${k+1}`:'Stick',fmtDate(x.stick)+`<small>${x.stick<new Date(new Date().toDateString())?'<span class="neg">Already past</span> · ':''}${x.trays} plug tray${x.trays===1?'':'s'}${r.mw>0?' · off mist '+fmtDate(x.move):''}</small>`)).join('')+kv('local_shipping',p.noShip?'All ready':'Ship',fmtDate(p.ready)):'<p class="foot muted">'+(p.noBench?'Add your benches on the Benches tab.':'Add weeks under mist and hardening off on the Crop tab.')+'</p>'}</section>
   <section class="card">${cardHead('checklist','sky','What it takes','')}
     ${kv('grid_on','Plug trays to stick',p.trays.toLocaleString('en-US')+`<small>${n1(r.sell,1)} sellable plugs each</small>`)}
     ${p.stock!=null?kv('park','Stock plants to cut from',p.stock+'<small>one month of growth each</small>'):''}
