@@ -535,6 +535,14 @@ body.guiding main{padding-top:calc(56px + env(safe-area-inset-top,0px) + 70px)}
 .dep{display:contents}
 .dep[hidden],.fgrid.dep[hidden]{display:none!important}
 .fgrid.dep{display:grid}
+.src-opts{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.src-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:var(--sc-low);border:1px solid var(--line);text-align:left;width:100%}
+.src-opt>.ms{font-size:22px;color:var(--on-sv);flex:none}
+.src-opt .t{flex:1;min-width:0;font-size:15px;line-height:20px;font-weight:600}
+.src-opt small{display:block;font-size:12px;line-height:16px;color:var(--on-sv);font-weight:500}
+.src-opt b{text-align:right;font-size:16px;line-height:20px;font-variant-numeric:tabular-nums;flex:none}
+.src-opt.on{border-color:#93c5fd;background:rgba(147,197,253,.14);box-shadow:0 0 0 1px #93c5fd inset}
+.src-opt.on>.ms{color:#bfdbfe}
 .bp-wrap{margin-top:8px;border-radius:12px;overflow:hidden;line-height:0}
 #bp{width:100%;height:auto;display:block}
 .ex-note{border-color:rgba(125,211,252,.5)}
@@ -601,7 +609,7 @@ const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(
 const uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COSTS=['Structure payment or depreciation','Utilities (power, gas)','Water','Insurance','Shared labor (watering, spraying, cleanup)','Other overhead'];
-const SRC={stock:{n:'Mother stock',ic:'park',cut:'Cuttings (mother stock)'},buy:{n:'Bought in',ic:'local_shipping',cut:'Cuttings (bought in)'},collect:{n:'Collected',ic:'content_cut',cut:'Cuttings (collected)'}};
+const SRC={stock:{n:'In-house mother stock',ic:'park',cut:'Cuttings (mother stock)',sub:'Cut from your own stock plants'},buy:{n:'Bought in',ic:'local_shipping',cut:'Cuttings (bought in)',sub:'Unrooted cuttings shipped to you'},collect:{n:'Collected offsite',ic:'directions_car',cut:'Cuttings (collected)',sub:'A trip to take cuttings elsewhere'}};
 
 /* ---------- state ---------- */
 // Cubic inches per cell for common liner inserts that fit a 1020 plug tray (manufacturer specs; brands vary):
@@ -626,7 +634,7 @@ function defaultSupplies(){return ['Rooting hormone','Fungicide','Fertilizer','T
 function newBench(type){return {id:uid(),type:type||'mist',len:'',wid:'',count:''};}
 function newCrop(name){return {id:uid(),name:name||'New crop',cells:'50',src:'stock',
   stock:{plant:'',life:'',upkeep:'',perMonth:'',harvest:'',pot:'3'},buy:{box:'',per:'',freight:''},collect:{rate:'',trip:'',perTrip:''},
-  cpc:1,cellVol:String(CELL_VOL[50]),volAuto:1,off:[],patent:false,stickRate:'',fillMin:'',gradeMin:'',mistWk:'',hardWk:'',strike:'',cull:'',royalty:'',price:''};}
+  cpc:1,cellVol:String(CELL_VOL[50]),volAuto:1,off:[],patent:false,ppaf:'',stickRate:'',fillMin:'',gradeMin:'',mistWk:'',hardWk:'',strike:'',cull:'',royalty:'',price:''};}
 const EX_BENCH=[['mist','12','4','2'],['open','20','4','3']];const EX_OLD_STOCK=['stock','12','4','2'];
 const EX_FIELDS={wage:'18',occ:'75',mistAdd:'0.03',mixYd:'45',pack:'10',trayPrice:'2.50',trayUses:'5'};
 const hasBench=b=>num(b.len)>0&&num(b.wid)>0&&num(b.count)>0;
@@ -754,12 +762,12 @@ function calc(c){
   const cuts=cells!=null?cells*cpc:null;
   // cuttings
   let unit=null,harvRate=null;
-  if(c.src==='stock'){const P=need(c.stock.plant,'c.stock.plant','Cost per stock plant','costs',true),L=need(c.stock.life,'c.stock.life','Stock plant life','costs'),K=need(c.stock.perMonth,'c.stock.perMonth','Cuttings per plant per month','crop'),H=need(c.stock.harvest,'c.stock.harvest','Harvest rate','crop');harvRate=H;
+  if(c.src==='stock'){const P=need(c.stock.plant,'c.stock.plant','Cost per stock plant','costs',true),L=need(c.stock.life,'c.stock.life','Stock plant life','costs'),K=need(c.stock.perMonth,'c.stock.perMonth','Cuttings per plant per month','costs'),H=need(c.stock.harvest,'c.stock.harvest','Harvest rate','crop');harvRate=H;
     const pd=POTS[stockPot()].d;stockSpace=R!=null?Math.pow(pd/12,2)*R*52/12:null;stockK=K;stockFit=benchTotals().stockFit;
     if(all(P,L,K,H,W)&&stockSpace!=null){unit=(P/L+opt(c.stock.upkeep)+stockSpace)/K+(own?0:W/H);harvPay=W/H;}}
-  else if(c.src==='buy'){const B=need(c.buy.box,'c.buy.box','Price per box','crop'),N=need(c.buy.per,'c.buy.per','Cuttings per box','crop');if(all(B,N))unit=(B+opt(c.buy.freight))/N;}
+  else if(c.src==='buy'){const B=need(c.buy.box,'c.buy.box','Price per box','costs'),N=need(c.buy.per,'c.buy.per','Cuttings per box','costs');if(all(B,N))unit=(B+opt(c.buy.freight))/N;}
   else{const Rt=need(c.collect.rate,'c.collect.rate','Collecting rate','crop');harvRate=Rt;const trip=opt(c.collect.trip);let tp=0;
-    if(trip>0){const pt=need(c.collect.perTrip,'c.collect.perTrip','Cuttings per trip','crop');tp=pt!=null?trip/pt:null;}
+    if(trip>0){const pt=need(c.collect.perTrip,'c.collect.perTrip','Cuttings per trip','costs');tp=pt!=null?trip/pt:null;}
     if(all(Rt,W)&&tp!=null){unit=(own?0:W/Rt)+tp;harvPay=W/Rt;}}
   const cutCost=unit!=null&&cuts!=null?unit*cuts:null;
   // potting mix: cells × cell volume, plus packing and waste
@@ -862,10 +870,6 @@ function summaryHTML(r){const k=capacity(r),yr=k.batch>0;
 
 /* ---------- CROP tab ---------- */
 function vCrop(){const c=crop(),r=calc(c),s=S.shop;
-  const srcF={
-    stock:`<div class="fgrid">${fld('Cuttings per stock plant','c.stock.perMonth',{suf:'/mo',wide:true,hint:'Usable cuttings each plant gives a month. Plant costs are on the Costs tab; pot size and stock bench are on Benches.'})}</div>`,
-    buy:`<div class="fgrid">${fld('Price per box','c.buy.box',{pre:'$'})}${fld('Cuttings per box','c.buy.per',{})}${fld('Freight per box','c.buy.freight',{pre:'$',wide:true,hint:'Shipping and box fees, if any'})}</div>`,
-    collect:`<div class="fgrid">${fld('Trip cost','c.collect.trip',{pre:'$',hint:'Gas or fees per trip, if any'})}<div class="dep" data-dep="perTrip">${fld('Cuttings per trip','c.collect.perTrip',{})}</div></div>`};
   return pills()+`
 <section class="card">${cardHead('eco','mint','Crop','')}<div class="fgrid">${fld('Name','c.name',{text:true,wide:true})}</div>
   <div class="btn-row"><button class="chip" data-a="dupCrop"><span class="ms sm">content_copy</span>Duplicate</button>${S.crops.length>1?`<button class="chip danger" data-a="delCrop"><span class="ms sm">delete</span>Delete</button>`:''}</div></section>
@@ -878,10 +882,8 @@ function vCrop(){const c=crop(),r=calc(c),s=S.shop;
   <div class="fgrid">${fld('Cell volume','c.cellVol',{suf:'in³',wide:true,hint:CELL_VOL[num(c.cells)]?'Typical for a '+num(c.cells)+'-cell insert. Check yours; brands vary.':'Check the insert\'s spec sheet'})}</div>
   <div class="calc-line"><span style="white-space:nowrap">Mix per plug tray</span><b data-o="mixLine">—</b></div></section>
 
-<section class="card">${cardHead(SRC[c.src].ic,'mint','Cuttings','')}
-  <div class="seg full">${Object.keys(SRC).map(k=>`<button class="${c.src===k?'on':''}" data-a="src:${k}">${SRC[k].n}</button>`).join('')}</div>
-  <div class="src-cmp" data-o="srcCmp"></div>
-  ${srcF[c.src]}
+<section class="card">${cardHead(SRC[c.src].ic,'mint','Cuttings source','Costs for each are on the Costs tab.')}
+  <div class="src-opts" data-o="srcCmp" role="radiogroup" aria-label="Cuttings source"></div>
 </section>
 
 <section class="card">${cardHead('inventory_2','lav','Supplies used','Prices are on the Costs tab.')}
@@ -894,21 +896,27 @@ function vCrop(){const c=crop(),r=calc(c),s=S.shop;
 <section class="card">${cardHead('schedule','butter','Growing','')}
   <div class="fgrid">${fld('Under mist','c.mistWk',{suf:'wks',hint:'Rooting'})}${fld('Hardening off','c.hardWk',{suf:'wks',hint:'Open bench, to finish'})}
   ${fld('Rooting','c.strike',{suf:'%',hint:'Cuttings that root'})}${fld('Grade-out loss','c.cull',{suf:'%',hint:'Rooted but not sellable'})}
-</div>
-  <div class="sw-row" style="margin-top:14px"><div><span class="bodyE sm blk">Patented or trademarked variety</span><span class="foot muted">Adds a royalty per plug</span></div><label class="switch"><input type="checkbox" data-patent="1"${c.patent?' checked':''} aria-label="Patented or trademarked variety"><span></span></label></div>
-  ${c.patent?`<div class="fgrid">${fld('Royalty per plug','c.royalty',{pre:'$',wide:true,hint:'From the breeder or licensing agent'})}</div>`:''}</section>
+</div></section>
 <div data-r="missCrop"></div>`;}
 
 /* ---------- COSTS tab ---------- */
 function exNote(){return S.example?`<section class="card ex-note"><p class="callout"><b>Example numbers are filled in</b> so the Coleus example works. Replace them with yours, or clear them. Anything you already typed in was kept.</p>
   <div class="btn-row"><button class="chip" data-a="exKeep"><span class="ms sm">check</span>Keep them</button><button class="chip danger" data-a="exClear"><span class="ms sm">delete_sweep</span>Clear examples</button></div></section>`:'';}
+function cuttingCosts(c){const nm=esc(c.name||'this crop');
+  const f={stock:`${fld('Cost per stock plant','c.stock.plant',{pre:'$',hint:'What it cost to buy or grow one'})}${fld('Stock plant life','c.stock.life',{suf:'mo',hint:'Months you cut from it'})}
+      ${fld('Cuttings per plant','c.stock.perMonth',{suf:'/mo',hint:'Usable cuttings a month'})}${fld('Upkeep per plant','c.stock.upkeep',{pre:'$',suf:'/mo',hint:'Water, fertilizer, care'})}`,
+    buy:`${fld('Price per box','c.buy.box',{pre:'$'})}${fld('Cuttings per box','c.buy.per',{})}${fld('Freight per box','c.buy.freight',{pre:'$',wide:true,hint:'Shipping and box fees, if any'})}`,
+    collect:`${fld('Trip cost','c.collect.trip',{pre:'$',hint:'Gas or fees per trip, if any'})}<div class="dep" data-dep="perTrip">${fld('Cuttings per trip','c.collect.perTrip',{})}</div>`};
+  return `<section class="card">${cardHead('content_cut','mint','Cuttings',`For ${nm} · ${SRC[c.src].n.toLowerCase()}`)}
+  <div class="fgrid">${f[c.src]}</div>
+  ${c.src==='stock'?'<p class="foot muted note">Bench space for stock plants is added from the pot size on the Benches tab.</p>':''}
+  <div class="sw-row" style="margin-top:14px"><div><span class="bodyE sm blk">Patented or trademarked variety</span><span class="foot muted">Adds a royalty per plug</span></div><label class="switch"><input type="checkbox" data-patent="1"${c.patent?' checked':''} aria-label="Patented or trademarked variety"><span></span></label></div>
+  ${c.patent?`<div class="fgrid">${fld('Royalty per plug','c.royalty',{pre:'$',hint:'From the breeder or licensing agent'})}${fld('PPAF number','c.ppaf',{text:true,hint:'Patent or PPAF number'})}</div>`:''}</section>`;}
 function vCosts(){const s=S.shop,area=benchTotals(usesStock()).area;
   return exNote()+`
 <section class="card">${cardHead('payments','pink','Labor','')}<div class="fgrid">${fld('Hourly wage','shop.wage',{pre:'$',suf:'/hr',wide:true,hint:s.ownLabor?'What your time is worth. Used to show your pay.':'Include payroll taxes if you pay them'})}</div>
   <div class="sw-row" style="margin-top:14px"><div><span class="bodyE sm blk">I do the labor myself</span><span class="foot muted">Count labor as your profit instead of a cost</span></div><label class="switch"><input type="checkbox" data-own="1"${s.ownLabor?' checked':''} aria-label="I do the labor myself"><span></span></label></div></section>
-${crop().src==='stock'?`<section class="card">${cardHead('park','mint','Mother stock','For '+esc(crop().name||'this crop')+'.')}
-  <div class="fgrid">${fld('Cost per stock plant','c.stock.plant',{pre:'$',hint:'What it cost to buy or grow one'})}${fld('Stock plant life','c.stock.life',{suf:'mo',hint:'Months you cut from it'})}
-  ${fld('Upkeep per plant','c.stock.upkeep',{pre:'$',suf:'/mo',wide:true,hint:'Water, fertilizer, care. Bench space is added from the pot size.'})}</div></section>`:''}
+${cuttingCosts(crop())}
 
 <section class="card">${cardHead('grid_on','peach','Potting mix & plug trays','')}
   <div class="fgrid">${fld('Potting mix','shop.mixYd',{pre:'$',suf:'/yd³',wide:true,hint:'Per cubic yard, delivered'})}${fld('Packing & waste','shop.pack',{suf:'%',wide:true,hint:'Mix used beyond the cell volume, from packing cells and spills. Blank = none.'})}
@@ -1040,11 +1048,11 @@ function planHTML(c,r){const p=planCalc(c,r);
   </section>`+missCard(r);}
 
 /* ---------- guide ---------- */
-const SEC_ORDER={crop:['Crop','Plug tray','Cuttings','Supplies used','Labor','Growing'],costs:['Labor','Mother stock','Potting mix & plug trays','Supplies','Bench rate'],benches:['Plug tray size','Benches'],price:['Price']};
+const SEC_ORDER={crop:['Crop','Plug tray','Cuttings source','Supplies used','Labor','Growing'],costs:['Labor','Cuttings','Potting mix & plug trays','Supplies','Bench rate'],benches:['Plug tray size','Benches'],price:['Price']};
 const TAB_ORDER=['crop','costs','benches','price'];
 function secOf(key){const p=(a)=>a.some(x=>key===x||key.startsWith(x));
-  if(key==='c.name')return ['crop','Crop'];if(p(['c.cells','c.cellVol']))return ['crop','Plug tray'];if(p(['c.stock.plant','c.stock.life','c.stock.upkeep']))return ['costs','Mother stock'];if(p(['c.stock.harvest','c.collect.rate']))return ['crop','Labor'];if(p(['c.stock.','c.buy.','c.collect.']))return ['crop','Cuttings'];
-  if(p(['c.stickRate','c.fillMin','c.gradeMin']))return ['crop','Labor'];if(p(['c.mistWk','c.hardWk','c.strike','c.cull','c.royalty']))return ['crop','Growing'];
+  if(key==='c.name')return ['crop','Crop'];if(p(['c.cells','c.cellVol']))return ['crop','Plug tray'];if(p(['c.stock.harvest','c.collect.rate']))return ['crop','Labor'];if(p(['c.stock.','c.buy.','c.collect.','c.royalty','c.ppaf']))return ['costs','Cuttings'];
+  if(p(['c.stickRate','c.fillMin','c.gradeMin']))return ['crop','Labor'];if(p(['c.mistWk','c.hardWk','c.strike','c.cull']))return ['crop','Growing'];
   if(key==='shop.wage')return ['costs','Labor'];if(p(['shop.mixYd','shop.pack','shop.trayPrice','shop.trayUses']))return ['costs','Potting mix & plug trays'];
   if(p(['shop.supplies','shop.flatsYr']))return ['costs','Supplies'];if(p(['shop.costs','shop.occ','shop.rateDirect','shop.mistAdd']))return ['costs','Bench rate'];
   if(p(['shop.flatL','shop.flatW']))return ['benches','Plug tray size'];if(p(['shop.benches','shop.weeks']))return ['benches','Benches'];return ['price','Price'];}
@@ -1155,7 +1163,7 @@ function refresh(){syncStockBench();const c=crop(),r=calc(c);deps(c);const t=S.t
     const bb=$('[data-r=bars]');if(bb)bb.innerHTML=barsHTML(r);
   }else if(t==='crop'){
     o('cpc',String(r.cpc));
-    {const el=$('[data-o=srcCmp]');if(el)el.innerHTML='<span class="caps">Cost per plug</span>'+srcCompare(c).map(x=>`<button class="${x.k===c.src?'on':''}" data-a="src:${x.k}"><span>${SRC[x.k].n}</span><b>${x.v!=null?plug(x.v):'needs info'}</b></button>`).join('');}
+    {const el=$('[data-o=srcCmp]');if(el)el.innerHTML=srcCompare(c).map(x=>`<button class="src-opt${x.k===c.src?' on':''}" data-a="src:${x.k}" role="radio" aria-checked="${x.k===c.src}"><span class="ms" aria-hidden="true">${SRC[x.k].ic}</span><span class="t">${SRC[x.k].n}<small>${SRC[x.k].sub}</small></span><b>${x.v!=null?plug(x.v):'needs info'}<small>per plug</small></b></button>`).join('');}
     o('mixLine',r.ydPerFlat!=null?`${n1(r.ydPerFlat*27,2)} cu ft · ${n1(r.tpb,0)} plug trays/yd³`:'—');
     const m=$('[data-r=missCrop]');if(m)m.innerHTML=missCard(r,'crop');
   }else if(t==='costs'){
@@ -1217,7 +1225,7 @@ function act(a,arg,b){const c=crop();
   case 'useSugg':{const r=calc(c);if(r.sugg!=null){c.price=(Math.ceil(r.sugg*100-1e-6)/100).toFixed(2);save();render();toast('Price set to '+money(+c.price));}break;}
   case 'cells':c.cells=arg;if(c.volAuto||!c.cellVol){const cv=CELL_VOL[+arg];c.cellVol=cv?String(cv):'';c.volAuto=1;}save();render();break;
   case 'cpc':c.cpc=Math.min(5,Math.max(1,(Math.round(opt(c.cpc))||1)+(+arg)));save();refresh();o('cpc',String(c.cpc));break;
-  case 'src':if(c.src!==arg){c.src=arg;save();render();toast(arg==='stock'?'Using mother stock. Stock area is back in.':`Using ${SRC[arg].n.toLowerCase()} cuttings. Stock area left out.`);}break;
+  case 'src':if(c.src!==arg){c.src=arg;save();render();toast(arg==='stock'?'Using in-house mother stock. Stock bench is back.':arg==='buy'?'Buying in cuttings. Stock bench left out.':'Collecting cuttings offsite. Stock bench left out.');}break;
   case 'rateMode':S.shop.rateMode=arg;save();render();break;
   case 'addCost':S.shop.costs.push({n:'',v:''});save();render();setTimeout(()=>{const i=$$('[data-k^="shop.costs."][data-k$=".n"]').pop();if(i)i.focus();},30);break;
   case 'delCost':S.shop.costs.splice(+arg,1);save();render();break;
@@ -1309,7 +1317,7 @@ function exportPDF(){const J=window.jspdf;if(!J||!J.jsPDF){toast('Connect to the
   R.forEach(({c,r})=>{let y=doc.lastAutoTable.finalY+26;if(y>640){doc.addPage();y=52;}
     doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(c.name||'Untitled',40,y);
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(110);
-    doc.text([r.cells!=null?n1(r.cells,0)+'-cell plug tray':'',r.cpc+' cutting'+(r.cpc>1?'s':'')+' per cell',SRC[c.src].n.toLowerCase(),r.mw+r.hw>0?n1(r.mw+r.hw,1)+' weeks':'',r.st!=null?n1(r.st,0)+'% rooting':'',r.cl?n1(r.cl,0)+'% grade-out':''].filter(Boolean).join(' · '),40,y+13);doc.setTextColor(0);
+    doc.text([r.cells!=null?n1(r.cells,0)+'-cell plug tray':'',r.cpc+' cutting'+(r.cpc>1?'s':'')+' per cell',SRC[c.src].n.toLowerCase(),r.mw+r.hw>0?n1(r.mw+r.hw,1)+' weeks':'',r.st!=null?n1(r.st,0)+'% rooting':'',r.cl?n1(r.cl,0)+'% grade-out':'',c.patent&&c.ppaf?'PPAF '+c.ppaf:''].filter(Boolean).join(' · '),40,y+13);doc.setTextColor(0);
     doc.autoTable({startY:y+20,tableWidth:W-80,head:[['Cost per plug tray','$','Share']],
       body:[...r.parts.map(p=>[p.n,p.v!=null?money(p.v):'needs info',p.v!=null&&r.total?pct(p.v/r.total):'']),['Total',money(r.total),''],['Per sellable plug',plug(r.perPlug),'']],
       styles:{fontSize:9,cellPadding:4},headStyles:{fillColor:[60,60,68]},columnStyles:{1:{halign:'right'},2:{halign:'right'}},
@@ -1317,8 +1325,8 @@ function exportPDF(){const J=window.jspdf;if(!J||!J.jsPDF){toast('Connect to the
   deliver(doc.output('blob'),'plug-price-list-'+today()+'.pdf');}
 function exportXLSX(){if(!window.XLSX){toast('Connect to the internet once to load Excel export');return;}
   const X=window.XLSX,wb=X.utils.book_new(),R=rows();
-  const pl=[['Crop','Cutting source','Supplies used','Cells','Cuttings per cell','Sellable plugs','Weeks','Cost per plug tray','Cost per plug','Price per plug','Plug tray revenue','Profit per plug tray','Margin','Plug trays per turn','Turn every (wks)','Plug trays per year','Income per year','Profit per year']];
-  R.forEach(({c,r})=>{const k=capacity(r);pl.push([c.name,srcLabel(c),r.supUsed.map(u=>u.x.n).join(', ')||'None',r.cells,r.cpc,r.sell!=null?+r.sell.toFixed(2):'',r.mw+r.hw,r.total!=null?+r.total.toFixed(2):'',r.perPlug!=null?+r.perPlug.toFixed(4):'',r.price!=null?r.price:'',r.rev!=null?+r.rev.toFixed(2):'',r.profit!=null?+r.profit.toFixed(2):'',r.margin!=null?+r.margin.toFixed(4):'',k.batch>0?k.batch:'',k.batch>0?k.every:'',k.flats||'',k.rev!=null?Math.round(k.rev):'',k.profit!=null?Math.round(k.profit):'']);});
+  const pl=[['Crop','Cutting source','Royalty per plug','PPAF number','Supplies used','Cells','Cuttings per cell','Sellable plugs','Weeks','Cost per plug tray','Cost per plug','Price per plug','Plug tray revenue','Profit per plug tray','Margin','Plug trays per turn','Turn every (wks)','Plug trays per year','Income per year','Profit per year']];
+  R.forEach(({c,r})=>{const k=capacity(r);pl.push([c.name,srcLabel(c),c.patent&&num(c.royalty)>0?num(c.royalty):'',c.patent?c.ppaf||'':'',r.supUsed.map(u=>u.x.n).join(', ')||'None',r.cells,r.cpc,r.sell!=null?+r.sell.toFixed(2):'',r.mw+r.hw,r.total!=null?+r.total.toFixed(2):'',r.perPlug!=null?+r.perPlug.toFixed(4):'',r.price!=null?r.price:'',r.rev!=null?+r.rev.toFixed(2):'',r.profit!=null?+r.profit.toFixed(2):'',r.margin!=null?+r.margin.toFixed(4):'',k.batch>0?k.batch:'',k.batch>0?k.every:'',k.flats||'',k.rev!=null?Math.round(k.rev):'',k.profit!=null?Math.round(k.profit):'']);});
   const ws1=X.utils.aoa_to_sheet(pl);ws1['!cols']=pl[0].map((h,i)=>({wch:i===0?24:14}));X.utils.book_append_sheet(wb,ws1,'Price list');
   const bd=[['Crop','Cost item','Per plug tray','Per sellable plug']];
   R.forEach(({c,r})=>{r.parts.forEach(p=>bd.push([c.name,p.n,p.v!=null?+p.v.toFixed(2):'needs info',p.v!=null&&r.sell?+(p.v/r.sell).toFixed(4):'']));bd.push([c.name,'Total',r.total!=null?+r.total.toFixed(2):'',r.perPlug!=null?+r.perPlug.toFixed(4):'']);bd.push([]);});
