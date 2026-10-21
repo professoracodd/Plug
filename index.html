@@ -599,15 +599,25 @@ function newBench(type){return {id:uid(),type:type||'mist',len:'',wid:'',count:'
 function newCrop(name){return {id:uid(),name:name||'New crop',cells:'50',src:'stock',
   stock:{plant:'',life:'',upkeep:'',perMonth:'',harvest:''},buy:{box:'',per:'',freight:''},collect:{rate:'',trip:'',perTrip:''},
   cpc:1,cellVol:String(CELL_VOL[50]),volAuto:1,off:[],stickRate:'',fillMin:'',gradeMin:'',mistWk:'',hardWk:'',strike:'',cull:'',royalty:'',price:''};}
-function exampleShop(sh){sh.wage='18';sh.costs.forEach((x,i)=>x.v=EX_COSTS[i]||'');sh.occ='75';sh.mistAdd='0.03';sh.mixYd='45';sh.pack='10';sh.trayPrice='2.50';sh.trayUses='5';
-  sh.benches=[Object.assign(newBench('mist'),{len:'12',wid:'4',count:'2'}),Object.assign(newBench('open'),{len:'20',wid:'4',count:'3'})];
-  sh.supplies.forEach(x=>{const e=EX_SUP[x.n];if(e){x.qty=e[0];x.unit=e[1];x.price=e[2];x.months=e[3];}});return sh;}
-function clearShop(sh){sh.wage='';sh.costs.forEach(x=>x.v='');sh.occ='';sh.mistAdd='';sh.rateDirect='';sh.mixYd='';sh.pack='';sh.trayPrice='';sh.trayUses='';sh.flatsYr='';
-  sh.benches=[newBench('mist'),newBench('open')];sh.supplies.forEach(x=>{x.qty='';x.unit='each';x.price='';x.months='';});}
-function defaults(ex){const sup=defaultSupplies();const c=fromPreset('coleus',sup);const d={v:1,presets:2,example:!!ex,guide:null,tab:'price',cur:c.id,crops:[c],
+const EX_BENCH=[['mist','12','4','2'],['open','20','4','3']];
+const EX_FIELDS={wage:'18',occ:'75',mistAdd:'0.03',mixYd:'45',pack:'10',trayPrice:'2.50',trayUses:'5'};
+const hasBench=b=>num(b.len)>0&&num(b.wid)>0&&num(b.count)>0;
+// Fill example costs and benches. onlyBlank keeps anything the grower already entered.
+function exampleShop(sh,onlyBlank){let n=0;const put=(o,k,v)=>{if(!v)return;if(onlyBlank&&o[k]!==''&&o[k]!=null)return;if(o[k]!==v){o[k]=v;n++;}};
+  Object.keys(EX_FIELDS).forEach(k=>put(sh,k,EX_FIELDS[k]));sh.costs.forEach((x,i)=>put(x,'v',EX_COSTS[i]));
+  if(!onlyBlank||!sh.benches.some(hasBench)){sh.benches=EX_BENCH.map(e=>Object.assign(newBench(e[0]),{len:e[1],wid:e[2],count:e[3]}));n++;}
+  sh.supplies.forEach(x=>{const e=EX_SUP[x.n];if(e&&(!onlyBlank||!(num(x.price)>0))){x.qty=e[0];x.unit=e[1];x.price=e[2];x.months=e[3];n++;}});return n;}
+// Clear only values that still match the examples; anything the grower typed stays.
+function clearShop(sh){const clr=(o,k,v)=>{if(v&&String(o[k])===v)o[k]='';};
+  Object.keys(EX_FIELDS).forEach(k=>clr(sh,k,EX_FIELDS[k]));sh.costs.forEach((x,i)=>clr(x,'v',EX_COSTS[i]));
+  sh.benches=sh.benches.filter(b=>!EX_BENCH.some(e=>b.type===e[0]&&b.len===e[1]&&b.wid===e[2]&&b.count===e[3]));if(!sh.benches.length)sh.benches=[newBench('mist'),newBench('open')];
+  sh.supplies.forEach(x=>{const e=EX_SUP[x.n];if(e&&x.qty===e[0]&&x.unit===e[1]&&x.price===e[2]&&x.months===e[3]){x.qty='';x.unit='each';x.price='';x.months='';}});}
+const isBlankCrop=c=>/^(new crop|crop \d+)$/i.test(String(c.name||'').trim())&&!c.price&&!c.stickRate&&!c.strike&&!c.mistWk&&!c.hardWk&&
+  ![c.stock,c.buy,c.collect].some(o=>o&&Object.values(o).some(v=>v!==''&&v!=null));
+function defaults(ex){const sup=defaultSupplies();const c=fromPreset('coleus',sup);const d={v:1,presets:3,example:!!ex,guide:null,tab:'price',cur:c.id,crops:[c],
   shop:{wage:'',margin:40,rateMode:'calc',rateDirect:'',mistAdd:'',costs:COSTS.map(n=>({n,v:''})),occ:'',weeks:'52',flatL:'21.5',flatW:'11',benches:[newBench('mist'),newBench('open')],
     mixYd:'',pack:'',trayPrice:'',trayUses:'',supplies:sup,flatsYr:''},
-  plan:{qty:'',ship:''}};if(ex)exampleShop(d.shop);return d;}
+  plan:{qty:'',ship:''}};if(ex)exampleShop(d.shop,false);return d;}
 function normalize(o){if(!o||typeof o!=='object'||!Array.isArray(o.crops)||!o.crops.length)return defaults(true);const d=defaults(false);
   const s=Object.assign({},d.shop,o.shop||{});if(!Array.isArray(s.costs))s.costs=d.shop.costs;if(!(o.shop&&Array.isArray(o.shop.supplies))){s.supplies=defaultSupplies();const oh=(o.shop&&Array.isArray(o.shop.hormones))?o.shop.hormones:[];const h0=s.supplies[0];if(oh[0]){h0.n=oh[0].n||h0.n;h0.price=oh[0].price||'';h0.qty=oh[0].price?'1':'';}}
   delete s.hormones;delete s.tagPrice;if(!Array.isArray(s.benches))s.benches=[newBench('mist'),newBench('open')];
@@ -616,12 +626,18 @@ function normalize(o){if(!o||typeof o!=='object'||!Array.isArray(o.crops)||!o.cr
     if(c.cellVol==null){const v=CELL_VOL[num(r.cells)];r.cellVol=v?String(v):'';r.volAuto=1;}
     ['hormone','flatsPerYd','tags','other'].forEach(k=>delete r[k]);return r;});
   if(!o.presets&&!crops.some(c=>/^coleus$/i.test(String(c.name).trim())))crops.push(fromPreset('coleus',s.supplies));
-  if((o.presets||0)<2)crops.forEach(c=>{if(!/^coleus$/i.test(String(c.name).trim()))return;const p=PRESETS.coleus.crop;
+  let ex=!!o.example;
+  if((o.presets||0)<3){
+    // drop leftover blank crops so the app opens on the Coleus example
+    for(let k=crops.length-1;k>=0;k--)if(crops.length>1&&isBlankCrop(crops[k]))crops.splice(k,1);
+    if(!crops.some(c=>/^coleus$/i.test(String(c.name).trim())))crops.push(fromPreset('coleus',s.supplies));
+    if(exampleShop(s,true)>0)ex=true;}
+  if((o.presets||0)<3)crops.forEach(c=>{if(!/^coleus$/i.test(String(c.name).trim()))return;const p=PRESETS.coleus.crop;
     Object.keys(p).forEach(k=>{if(typeof p[k]==='string'&&k!=='src'&&(c[k]===''||c[k]==null))c[k]=p[k];});Object.keys(p.stock).forEach(k=>{if(!c.stock[k])c.stock[k]=p.stock[k];});});
   const cur=crops.some(c=>c.id===o.cur)?o.cur:crops[0].id;
-  return {v:1,presets:2,example:!!o.example,guide:(o.guide&&o.guide.id)?o.guide:null,tab:['price','crop','costs','benches','plan'].includes(o.tab==='shop'?'costs':o.tab)?(o.tab==='shop'?'costs':o.tab):'price',cur,crops,shop:s,plan:Object.assign({},d.plan,o.plan||{})};}
+  return {v:1,presets:3,example:ex,guide:(o.guide&&o.guide.id)?o.guide:null,tab:['price','crop','costs','benches','plan'].includes(o.tab==='shop'?'costs':o.tab)?(o.tab==='shop'?'costs':o.tab):'price',cur,crops,shop:s,plan:Object.assign({},d.plan,o.plan||{})};}
 let S;try{S=normalize(JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY)));}catch(e){S=defaults(true);}
-S.tab='price';
+S.tab='price';{const co=S.crops.find(c=>/^coleus$/i.test(String(c.name).trim()));if(co)S.cur=co.id;}
 let saveT;function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}},150);}
 function saveNow(){clearTimeout(saveT);try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 const crop=()=>S.crops.find(c=>c.id===S.cur)||S.crops[0];
@@ -820,7 +836,7 @@ function vCrop(){const c=crop(),r=calc(c),s=S.shop;
 <div data-r="missCrop"></div>`;}
 
 /* ---------- COSTS tab ---------- */
-function exNote(){return S.example?`<section class="card ex-note"><p class="callout"><b>Example numbers are filled in</b> so you can see how Plug works. Replace them with yours, or clear them.</p>
+function exNote(){return S.example?`<section class="card ex-note"><p class="callout"><b>Example numbers are filled in</b> so the Coleus example works. Replace them with yours, or clear them. Anything you already typed in was kept.</p>
   <div class="btn-row"><button class="chip" data-a="exKeep"><span class="ms sm">check</span>Keep them</button><button class="chip danger" data-a="exClear"><span class="ms sm">delete_sweep</span>Clear examples</button></div></section>`:'';}
 function vCosts(){const s=S.shop,area=benchTotals().area;
   return exNote()+`
@@ -1063,7 +1079,7 @@ function act(a,arg,b){const c=crop();
     if(!shut&&S.tab==='crop'&&S.guide){S.guide.seen=S.guide.seen||{};S.guide.seen.sup=1;save();}render();break;}
   case 'guideStop':S.guide=null;save();applyBeacons();toast('Guide off');break;
   case 'exKeep':S.example=false;save();render();break;
-  case 'exClear':if(confirm('Clear the example costs and benches? Your crops stay.')){clearShop(S.shop);S.example=false;save();render();toast('Examples cleared');}break;
+  case 'exClear':if(confirm('Clear the example costs, benches and supplies? Anything you typed in yourself stays, and so do your crops.')){clearShop(S.shop);S.example=false;save();render();toast('Examples cleared');}break;
   case 'menu':openMenu();break;
   case 'howto':openHowto();break;
   case 'closeSheet':closeSheet();break;
