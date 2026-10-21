@@ -609,7 +609,9 @@ const POTS={'1':{n:'#1',d:6.375},'3':{n:'#3',d:10.5},'5':{n:'#5',d:11.875}};
 const UNITS=['gal','qt','fl oz','lb','oz','roll','box','bag','case','each'];
 // Example values so a first-time user can see the app working. Replace with your own.
 const PRESETS={coleus:{name:'Coleus',noHorm:1,crop:{cells:'50',cellVol:String(CELL_VOL[50]),volAuto:1,src:'stock',
-  stock:{plant:'3',life:'6',upkeep:'0.25',perMonth:'15',harvest:'400',pot:'1'},cpc:1,stickRate:'250',fillMin:'3',gradeMin:'3',
+  stock:{plant:'3',life:'6',upkeep:'0.25',perMonth:'15',harvest:'400',pot:'1'},
+  // bought in: NC Farms lists coleus URC at 22.2¢ each in units of 100 (1,000 = $222); freight and the collecting trip are example numbers
+  buy:{box:'222',per:'1000',freight:'40'},collect:{rate:'250',trip:'40',perTrip:'1000'},cpc:1,stickRate:'250',fillMin:'3',gradeMin:'3',
   mistWk:'3',hardWk:'2',strike:'95',cull:'5',royalty:'',price:'0.75'}}};
 const EX_SUP={'Rooting hormone':['1','each','30','12'],'Fungicide':['1','qt','60','12'],'Fertilizer':['1','bag','45','6'],'Tags':['1','box','40','6'],'Sticky cards':['1','box','25','3']};
 const EX_COSTS=['3000','2400','600','800','',''];
@@ -637,7 +639,7 @@ function clearShop(sh){const clr=(o,k,v)=>{if(v&&String(o[k])===v)o[k]='';};
   sh.supplies.forEach(x=>{const e=EX_SUP[x.n];if(e&&x.qty===e[0]&&x.unit===e[1]&&x.price===e[2]&&x.months===e[3]){x.qty='';x.unit='each';x.price='';x.months='';}});}
 const isBlankCrop=c=>/^(new crop|crop \d+)$/i.test(String(c.name||'').trim())&&!c.price&&!c.stickRate&&!c.strike&&!c.mistWk&&!c.hardWk&&
   ![c.stock,c.buy,c.collect].some(o=>o&&Object.keys(o).some(k=>k!=='pot'&&o[k]!==''&&o[k]!=null));
-function defaults(ex){const sup=defaultSupplies();const c=fromPreset('coleus',sup);const d={v:1,presets:4,example:!!ex,guide:null,tab:'price',cur:c.id,crops:[c],
+function defaults(ex){const sup=defaultSupplies();const c=fromPreset('coleus',sup);const d={v:1,presets:5,example:!!ex,guide:null,tab:'price',cur:c.id,crops:[c],
   shop:{wage:'',margin:40,rateMode:'calc',rateDirect:'',mistAdd:'',costs:COSTS.map(n=>({n,v:''})),occ:'',weeks:'52',flatL:'21.5',flatW:'11',benches:[newBench('mist'),newBench('open')],
     mixYd:'',pack:'',trayPrice:'',trayUses:'',supplies:sup,flatsYr:''},
   plan:{trays:'',ship:''}};if(ex)exampleShop(d.shop,false);return d;}
@@ -656,10 +658,12 @@ function normalize(o){if(!o||typeof o!=='object'||!Array.isArray(o.crops)||!o.cr
     if(!crops.some(c=>/^coleus$/i.test(String(c.name).trim())))crops.push(fromPreset('coleus',s.supplies));
     if(exampleShop(s,true)>0)ex=true;}
   if((o.presets||0)<4&&ex&&!s.benches.some(b=>b.type==='stock')){const e=EX_BENCH[2];s.benches.push(Object.assign(newBench(e[0]),{len:e[1],wid:e[2],count:e[3]}));}
+  if((o.presets||0)<5)crops.forEach(c=>{if(!/^coleus$/i.test(String(c.name).trim()))return;const p=PRESETS.coleus.crop;
+    ['buy','collect'].forEach(g=>{c[g]=c[g]||{};Object.keys(p[g]).forEach(k=>{if(c[g][k]===''||c[g][k]==null)c[g][k]=p[g][k];});});});
   if((o.presets||0)<3)crops.forEach(c=>{if(!/^coleus$/i.test(String(c.name).trim()))return;const p=PRESETS.coleus.crop;
     Object.keys(p).forEach(k=>{if(typeof p[k]==='string'&&k!=='src'&&(c[k]===''||c[k]==null))c[k]=p[k];});Object.keys(p.stock).forEach(k=>{if(!c.stock[k])c.stock[k]=p.stock[k];});});
   const cur=crops.some(c=>c.id===o.cur)?o.cur:crops[0].id;
-  return {v:1,presets:4,example:ex,guide:(o.guide&&o.guide.id)?o.guide:null,tab:['price','crop','costs','benches','plan'].includes(o.tab==='shop'?'costs':o.tab)?(o.tab==='shop'?'costs':o.tab):'price',cur,crops,shop:s,plan:Object.assign({},d.plan,o.plan||{})};}
+  return {v:1,presets:5,example:ex,guide:(o.guide&&o.guide.id)?o.guide:null,tab:['price','crop','costs','benches','plan'].includes(o.tab==='shop'?'costs':o.tab)?(o.tab==='shop'?'costs':o.tab):'price',cur,crops,shop:s,plan:Object.assign({},d.plan,o.plan||{})};}
 let S;try{S=normalize(JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY)));}catch(e){S=defaults(true);}
 S.tab='price';{const co=S.crops.find(c=>/^coleus$/i.test(String(c.name).trim()));if(co)S.cur=co.id;}
 let saveT;function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}},150);}
