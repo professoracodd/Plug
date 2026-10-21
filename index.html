@@ -532,6 +532,9 @@ body.guiding main{padding-top:calc(56px + env(safe-area-inset-top,0px) + 70px)}
 .src-cmp button{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:10px;background:var(--sc-low);border:1px solid var(--line);text-align:left;font-size:12px;line-height:16px;color:var(--on-sv)}
 .src-cmp button b{font-size:15px;line-height:20px;color:#fff;font-variant-numeric:tabular-nums}
 .src-cmp button.on{border-color:#93c5fd;background:rgba(147,197,253,.12)}
+.dep{display:contents}
+.dep[hidden],.fgrid.dep[hidden]{display:none!important}
+.fgrid.dep{display:grid}
 .bp-wrap{margin-top:8px;border-radius:12px;overflow:hidden;line-height:0}
 #bp{width:100%;height:auto;display:block}
 .ex-note{border-color:rgba(125,211,252,.5)}
@@ -623,7 +626,7 @@ function defaultSupplies(){return ['Rooting hormone','Fungicide','Fertilizer','T
 function newBench(type){return {id:uid(),type:type||'mist',len:'',wid:'',count:''};}
 function newCrop(name){return {id:uid(),name:name||'New crop',cells:'50',src:'stock',
   stock:{plant:'',life:'',upkeep:'',perMonth:'',harvest:'',pot:'3'},buy:{box:'',per:'',freight:''},collect:{rate:'',trip:'',perTrip:''},
-  cpc:1,cellVol:String(CELL_VOL[50]),volAuto:1,off:[],stickRate:'',fillMin:'',gradeMin:'',mistWk:'',hardWk:'',strike:'',cull:'',royalty:'',price:''};}
+  cpc:1,cellVol:String(CELL_VOL[50]),volAuto:1,off:[],patent:false,stickRate:'',fillMin:'',gradeMin:'',mistWk:'',hardWk:'',strike:'',cull:'',royalty:'',price:''};}
 const EX_BENCH=[['mist','12','4','2'],['open','20','4','3']];const EX_OLD_STOCK=['stock','12','4','2'];
 const EX_FIELDS={wage:'18',occ:'75',mistAdd:'0.03',mixYd:'45',pack:'10',trayPrice:'2.50',trayUses:'5'};
 const hasBench=b=>num(b.len)>0&&num(b.wid)>0&&num(b.count)>0;
@@ -646,7 +649,7 @@ function defaults(ex){const sup=defaultSupplies();const c=fromPreset('coleus',su
 function normalize(o){if(!o||typeof o!=='object'||!Array.isArray(o.crops)||!o.crops.length)return defaults(true);const d=defaults(false);
   const s=Object.assign({},d.shop,o.shop||{});if(!Array.isArray(s.costs))s.costs=d.shop.costs;if(!(o.shop&&Array.isArray(o.shop.supplies))){s.supplies=defaultSupplies();const oh=(o.shop&&Array.isArray(o.shop.hormones))?o.shop.hormones:[];const h0=s.supplies[0];if(oh[0]){h0.n=oh[0].n||h0.n;h0.price=oh[0].price||'';h0.qty=oh[0].price?'1':'';}}
   delete s.hormones;delete s.tagPrice;if(!Array.isArray(s.benches))s.benches=[newBench('mist'),newBench('open')];
-  const crops=o.crops.map(c=>{const b=newCrop();const r=Object.assign(b,c);r.stock=Object.assign(newCrop().stock,c.stock||{});if(!(c.stock&&c.stock.pot))r.stock.pot=/^coleus$/i.test(String(c.name||'').trim())?'1':'3';r.buy=Object.assign(newCrop().buy,c.buy||{});r.collect=Object.assign(newCrop().collect,c.collect||{});if(!r.id)r.id=uid();if(!SRC[r.src])r.src='stock';if(!Array.isArray(r.off))r.off=[];
+  const crops=o.crops.map(c=>{const b=newCrop();const r=Object.assign(b,c);r.stock=Object.assign(newCrop().stock,c.stock||{});if(!(c.stock&&c.stock.pot))r.stock.pot=/^coleus$/i.test(String(c.name||'').trim())?'1':'3';r.buy=Object.assign(newCrop().buy,c.buy||{});r.collect=Object.assign(newCrop().collect,c.collect||{});if(!r.id)r.id=uid();if(!SRC[r.src])r.src='stock';if(c.patent==null)r.patent=num(c.royalty)>0;if(!Array.isArray(r.off))r.off=[];
     if(c.hormone===''&&!Array.isArray(c.off))r.off=s.supplies.filter(isHorm).map(x=>x.id);
     if(c.cellVol==null){const v=CELL_VOL[num(r.cells)];r.cellVol=v?String(v):'';r.volAuto=1;}
     ['hormone','flatsPerYd','tags','other'].forEach(k=>delete r[k]);return r;});
@@ -785,7 +788,7 @@ function calc(c){
   // yield
   const st=need(c.strike,'c.strike','Rooting %','crop');const cl=Math.min(opt(c.cull),100);
   const sell=cells!=null&&st!=null?cells*Math.min(st,100)/100*(1-cl/100):null;
-  const roy=opt(c.royalty);const royCost=sell!=null?roy*sell:null;
+  const roy=c.patent?opt(c.royalty):0;const royCost=sell!=null?roy*sell:null;
   const parts=[
     {k:'cut',n:SRC[c.src].cut,v:cutCost,col:'mint'},
     {k:'media',n:'Potting mix',v:media,col:'peach'},
@@ -862,7 +865,7 @@ function vCrop(){const c=crop(),r=calc(c),s=S.shop;
   const srcF={
     stock:`<div class="fgrid">${fld('Cuttings per stock plant','c.stock.perMonth',{suf:'/mo',wide:true,hint:'Usable cuttings each plant gives a month. Plant costs are on the Costs tab; pot size and stock bench are on Benches.'})}</div>`,
     buy:`<div class="fgrid">${fld('Price per box','c.buy.box',{pre:'$'})}${fld('Cuttings per box','c.buy.per',{})}${fld('Freight per box','c.buy.freight',{pre:'$',wide:true,hint:'Shipping and box fees, if any'})}</div>`,
-    collect:`<div class="fgrid">${fld('Trip cost','c.collect.trip',{pre:'$',hint:'Gas or fees per trip, if any'})}${fld('Cuttings per trip','c.collect.perTrip',{})}</div>`};
+    collect:`<div class="fgrid">${fld('Trip cost','c.collect.trip',{pre:'$',hint:'Gas or fees per trip, if any'})}<div class="dep" data-dep="perTrip">${fld('Cuttings per trip','c.collect.perTrip',{})}</div></div>`};
   return pills()+`
 <section class="card">${cardHead('eco','mint','Crop','')}<div class="fgrid">${fld('Name','c.name',{text:true,wide:true})}</div>
   <div class="btn-row"><button class="chip" data-a="dupCrop"><span class="ms sm">content_copy</span>Duplicate</button>${S.crops.length>1?`<button class="chip danger" data-a="delCrop"><span class="ms sm">delete</span>Delete</button>`:''}</div></section>
@@ -882,7 +885,7 @@ function vCrop(){const c=crop(),r=calc(c),s=S.shop;
 </section>
 
 <section class="card">${cardHead('inventory_2','lav','Supplies used','Prices are on the Costs tab.')}
-  ${s.supplies.length?s.supplies.map(x=>`<div class="sw-row sup-sw"><span class="callout">${esc(x.n||'Untitled')}</span><label class="switch"><input type="checkbox" data-sup="${x.id}"${(c.off||[]).includes(x.id)?'':' checked'} aria-label="${esc(x.n||'Supply')} used on this crop"><span></span></label></div>`).join(''):'<p class="foot muted empty-note">No supplies yet. Add them on the Costs tab.</p>'}</section>
+  ${s.supplies.some(x=>num(x.price)>0)?s.supplies.filter(x=>num(x.price)>0).map(x=>`<div class="sw-row sup-sw"><span class="callout">${esc(x.n||'Untitled')}</span><label class="switch"><input type="checkbox" data-sup="${x.id}"${(c.off||[]).includes(x.id)?'':' checked'} aria-label="${esc(x.n||'Supply')} used on this crop"><span></span></label></div>`).join(''):'<p class="foot muted empty-note">No supplies have prices yet. Add them on the Costs tab.</p>'}</section>
 
 <section class="card">${cardHead('pan_tool','pink','Labor','')}
   <div class="fgrid">${c.src==='stock'?fld('Harvest rate','c.stock.harvest',{suf:'/hr',wide:true,hint:'Cuttings you can take from stock plants per hour'}):c.src==='collect'?fld('Collecting rate','c.collect.rate',{suf:'/hr',wide:true,hint:'Cuttings you can collect per hour, including time on site'}):''}${fld('Sticking rate','c.stickRate',{suf:'/hr',wide:true,hint:'Cuttings prepped, dipped and stuck per hour'})}${fld('Fill plug trays','c.fillMin',{suf:'min',hint:'Per plug tray'})}${fld('Grade & ship','c.gradeMin',{suf:'min',hint:'Per plug tray'})}</div>
@@ -891,7 +894,9 @@ function vCrop(){const c=crop(),r=calc(c),s=S.shop;
 <section class="card">${cardHead('schedule','butter','Growing','')}
   <div class="fgrid">${fld('Under mist','c.mistWk',{suf:'wks',hint:'Rooting'})}${fld('Hardening off','c.hardWk',{suf:'wks',hint:'Open bench, to finish'})}
   ${fld('Rooting','c.strike',{suf:'%',hint:'Cuttings that root'})}${fld('Grade-out loss','c.cull',{suf:'%',hint:'Rooted but not sellable'})}
-  ${fld('Royalty per plug','c.royalty',{pre:'$',wide:true,hint:'Patented or trademarked varieties only. Blank if none.'})}</div></section>
+</div>
+  <div class="sw-row" style="margin-top:14px"><div><span class="bodyE sm blk">Patented or trademarked variety</span><span class="foot muted">Adds a royalty per plug</span></div><label class="switch"><input type="checkbox" data-patent="1"${c.patent?' checked':''} aria-label="Patented or trademarked variety"><span></span></label></div>
+  ${c.patent?`<div class="fgrid">${fld('Royalty per plug','c.royalty',{pre:'$',wide:true,hint:'From the breeder or licensing agent'})}</div>`:''}</section>
 <div data-r="missCrop"></div>`;}
 
 /* ---------- COSTS tab ---------- */
@@ -916,8 +921,8 @@ ${crop().src==='stock'?`<section class="card">${cardHead('park','mint','Mother s
     ${fld(x.unit==='each'||!x.unit?'Price each':'Price per '+esc(x.unit),'shop.supplies.'+i+'.price',{pre:'$'})}${fld('Bought every','shop.supplies.'+i+'.months',{suf:'mo'})}</div>
     <p class="foot fit-line" data-o="sup${i}"></p></div>`).join('')}
   <div class="btn-row"><button class="chip" data-a="addSup"><span class="ms sm">add</span>Add a supply</button></div>
-  <div class="fgrid" style="margin-top:12px">${fld('Plug trays per year','shop.flatsYr',{wide:true,hint:'All crops together. Blank = the most your benches can turn of the selected crop.'})}</div>
-  <p class="foot muted note" data-o="fyLine"></p></section>
+  <div class="dep" data-dep="fy"><div class="fgrid" style="margin-top:12px">${fld('Plug trays per year','shop.flatsYr',{wide:true,hint:'All crops together. Blank = the most your benches can turn of the selected crop.'})}</div>
+  <p class="foot muted note" data-o="fyLine"></p></div></section>
 
 <section class="card">${cardHead('square_foot','butter','Bench rate','One square foot of bench for one week.')}
   <div class="seg full"><button class="${s.rateMode==='calc'?'on':''}" data-a="rateMode:calc">Figure it</button><button class="${s.rateMode==='direct'?'on':''}" data-a="rateMode:direct">I know my rate</button></div>
@@ -929,7 +934,7 @@ ${crop().src==='stock'?`<section class="card">${cardHead('park','mint','Mother s
     <div class="kv"><span>Bench area</span><b>${area>0?n1(area,1)+' sq ft':`<button class="link" data-a="jump:shop.benches.0.len|benches">Add benches</button>`}</b></div>
     <div class="kv"><span>Weeks a year</span><b>${n1(Math.min(52,opt(s.weeks)||52),0)} <button class="link" data-a="jump:shop.weeks|benches">Change</button></b></div>`
   :`<div class="fgrid">${fld('Open bench rate','shop.rateDirect',{pre:'$',wide:true,hint:'Per square foot per week'})}</div>`}
-  <div class="fgrid">${fld('Mist & bottom heat add-on','shop.mistAdd',{pre:'$',wide:true,hint:'Extra per sq ft per week on mist: heat mats, mist water, power. Blank if none.'})}</div>
+  <div class="fgrid dep" data-dep="mist">${fld('Mist & bottom heat add-on','shop.mistAdd',{pre:'$',wide:true,hint:'Extra per sq ft per week on mist: heat mats, mist water, power. Blank if none.'})}</div>
   <div class="tot-line"><span class="callout">Open bench</span><b class="num" data-o="rateOpen">—</b></div><div class="kv"><span>Mist bench</span><b data-o="rateMist">—</b></div></section>
 
 <section class="card">${cardHead('percent','mint','Target margin','For the suggested price.')}
@@ -946,7 +951,7 @@ function vBenches(){const s=S.shop;
 <section class="card">${cardHead('table_rows','lav','Benches','')}
   ${s.benches.length?'':'<p class="foot muted empty-note">No benches yet.</p>'}
   ${s.benches.map((b,i)=>b.type==='stock'&&!usesStock()?'':`<div class="bench${folded('i:'+b.id)?' folded':''}" data-bench="${i}">
-    <div class="bench-top">${foldBtn('i:'+b.id)}<div class="seg"><button class="${b.type!=='open'&&b.type!=='stock'?'on':''}" data-a="benchType:${i}:mist">Mist</button><button class="${b.type==='open'?'on':''}" data-a="benchType:${i}:open">Open</button><button class="${b.type==='stock'?'on':''}" data-a="benchType:${i}:stock">Stock</button></div>
+    <div class="bench-top">${foldBtn('i:'+b.id)}<div class="seg"><button class="${b.type!=='open'&&b.type!=='stock'?'on':''}" data-a="benchType:${i}:mist">Mist</button><button class="${b.type==='open'?'on':''}" data-a="benchType:${i}:open">Open</button>${usesStock()?`<button class="${b.type==='stock'?'on':''}" data-a="benchType:${i}:stock">Stock</button>`:''}</div>
       <span class="bench-sp"></span><button class="icon-sm" data-a="delBench:${i}" aria-label="Remove bench"><span class="ms sm">close</span></button></div>
     ${b.type==='stock'?`<div class="sw-row" style="margin-top:8px"><span class="callout">Stock pot size</span><div class="seg">${Object.keys(POTS).map(k=>`<button class="${(POTS[b.pot]?b.pot:'1')===k?'on':''}" data-a="bpot:${i}:${k}">${POTS[k].n}</button>`).join('')}</div></div>`:''}
     <div class="fgrid three">${fld('Length','shop.benches.'+i+'.len',{suf:'ft'})}${fld('Width','shop.benches.'+i+'.wid',{suf:'ft'})}${fld('How many','shop.benches.'+i+'.count',{})}</div><p class="foot fit-line" data-o="fit${i}"></p></div>`).join('')}
@@ -1133,7 +1138,10 @@ function render(){document.body.dataset.tab=S.tab;$('#topTitle').textContent=TIT
   $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===S.tab));
   $('#main').innerHTML=VIEWS[S.tab]();refresh();}
 function o(name,text,html){$$(`[data-o="${name}"]`).forEach(e=>{if(html)e.innerHTML=text;else e.textContent=text;});}
-function refresh(){syncStockBench();const c=crop(),r=calc(c);const t=S.tab;
+function deps(c){const show=(n,v)=>$$(`[data-dep="${n}"]`).forEach(e=>e.hidden=!v);
+  show('perTrip',opt(c.collect.trip)>0);show('fy',S.shop.supplies.some(x=>num(x.price)>0));show('mist',benchTotals().mist>0);
+  const mr=$('[data-o=rateMist]');if(mr)mr.closest('.kv').hidden=!(benchTotals().mist>0);}
+function refresh(){syncStockBench();const c=crop(),r=calc(c);deps(c);const t=S.tab;
   const missKeys=new Set(r.miss.map(x=>x.key));
   $$('input[data-k]').forEach(i=>i.classList.toggle('need',missKeys.has(i.dataset.k)));
   const pill=$('.pill.on .t');if(pill)pill.textContent=c.name||'Untitled';
@@ -1182,6 +1190,7 @@ document.addEventListener('input',e=>{const t=e.target;if(!t.dataset||!t.dataset
   save();syncSame(t);refresh();});
 document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset&&t.dataset.own){S.shop.ownLabor=t.checked;save();render();toast(t.checked?'Labor now counts as your profit':'Labor counts as a cost again');return;}
+  if(t.dataset&&t.dataset.patent){crop().patent=t.checked;save();render();return;}
   if(t.dataset&&t.dataset.sup){const c=crop();c.off=(c.off||[]).filter(x=>x!==t.dataset.sup);if(!t.checked)c.off.push(t.dataset.sup);save();refresh();return;}
   if(t.tagName==='SELECT'&&/^shop\.supplies\.\d+\.unit$/.test(t.dataset.k||'')){set(t.dataset.k,t.value);save();render();return;}
   if(t.tagName==='SELECT'&&t.dataset.k){set(t.dataset.k,t.value);save();refresh();}
