@@ -1,6 +1,6 @@
 // Plug – offline support. Tries the internet first so updates show right away,
 // and falls back to the saved copy when there's no signal.
-const CACHE = 'plug-v7';
+const CACHE = 'plug-v8';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(
@@ -14,6 +14,7 @@ self.addEventListener('activate', e => e.waitUntil(
 self.addEventListener('fetch', e => {
   const r = e.request;
   if (r.method !== 'GET') return;
+  if (r.url.endsWith('.mp4')) return;   // let the browser stream the tour video directly
   e.respondWith(
     fetch(r).then(res => {
       if (res && (res.ok || res.type === 'opaque')) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(r, copy)); }

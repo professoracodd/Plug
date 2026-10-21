@@ -549,6 +549,17 @@ body.guiding main{padding-top:calc(56px + env(safe-area-inset-top,0px) + 70px)}
 .src-opt b{text-align:right;font-size:16px;line-height:20px;font-variant-numeric:tabular-nums;flex:none}
 .src-opt.on{border-color:var(--acc);background:rgb(var(--acc-rgb) / .14);box-shadow:0 0 0 1px var(--acc) inset}
 .src-opt.on>.ms{color:var(--acc2)}
+.tour-ov{position:fixed;inset:0;z-index:95;background:rgba(4,12,26,.8);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);display:grid;place-items:center;padding:16px;opacity:0;transition:opacity .3s}
+.tour-ov.on{opacity:1}
+.tour-box{width:min(880px,100%);background:var(--sc-lowest);border:1px solid var(--line);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.tour-h{display:flex;align-items:center;gap:12px}
+.tour-h h2{margin:0;font-size:22px;line-height:28px;font-weight:800}
+.tour-h p{color:var(--on-sv);font-size:14px;line-height:19px}
+.tour-box video{width:100%;aspect-ratio:16/9;border-radius:14px;background:#000;display:block}
+.tour-btns{display:flex;justify-content:flex-end;gap:10px}
+.tour-go{padding:11px 18px;border-radius:12px;background:#fff;color:#0b1b36;font-weight:700;font-size:15px}
+.tour-go[hidden],.tour-btns .chip[hidden]{display:none}
+.tour-box>.foot{text-align:center}
 .bp-wrap{margin-top:8px;border-radius:12px;overflow:hidden;line-height:0}
 #bp{width:100%;height:auto;display:block}
 .ex-note{border-color:rgb(var(--glow-rgb) / .5)}
@@ -1203,12 +1214,12 @@ function refresh(){syncStockBench();const c=crop(),r=calc(c);deps(c);const t=S.t
     o('rateOpen',r.R!=null?money(r.R,3)+' / sq ft / wk':'—');
     o('rateMist',r.R!=null?money(r.R+r.A,3)+' / sq ft / wk':'—');
     o('tm2',Math.round(opt(S.shop.margin))+'%');
-    const fy=r.fy;o('fyLine',fy.n>0?(fy.auto?`Using ${fy.n.toLocaleString('en-US')} plug trays a year, the bench max for ${esc(c.name||'this crop')}.`:`Using ${fy.n.toLocaleString('en-US')} plug trays a year.`):'Add benches or plug trays per year to spread supply costs.');
+    const fy=r.fy;o('fyLine',fy.n>0?(fy.auto?`Using ${fy.n.toLocaleString('en-US')} plug trays a year, the bench max for ${c.name||'this crop'}.`:`Using ${fy.n.toLocaleString('en-US')} plug trays a year.`):'Add benches or plug trays per year to spread supply costs.');
     S.shop.supplies.forEach((x,i)=>{const p=num(x.price),q=num(x.qty)>0?num(x.qty):1,mo=num(x.months);
       o('sup'+i,p>0&&mo>0?`${money(q*p)} every ${n1(mo,1)} mo${fy.n>0?' · '+plug(q*p/(fy.n*mo/12))+' per plug tray':''}`:'');});
     const m=$('[data-r=missShop]');if(m)m.innerHTML=missCard(r,'costs');
   }else if(t==='benches'){
-    const ws=usesStock(),bt=benchTotals(ws),cn=esc(crop().name||'this crop');
+    const ws=usesStock(),bt=benchTotals(ws),cn=crop().name||'this crop';
     o('benchArea',bt.area>0?n1(bt.area,1)+' sq ft':'—');
     S.shop.benches.forEach((b,i)=>{const n=Math.max(0,Math.round(opt(b.count)));
       if(b.type==='stock'){if(!ws)return;const pk=POTS[b.pot]?b.pot:'1',f=potFit(b,pk)*n;o('fit'+i,f?(b.auto&&b.need?`Sized for ${cn}: ${b.need.toLocaleString('en-US')} stock plants · holds ${f.toLocaleString('en-US')} ${POTS[pk].n} pots`:`Holds ${f.toLocaleString('en-US')} ${POTS[pk].n} pots`):'');return;}
@@ -1286,6 +1297,8 @@ function act(a,arg,b){const c=crop();
   case 'exClear':if(confirm('Clear the example costs, benches and supplies? Anything you typed in yourself stays, and so do your crops.')){clearShop(S.shop);S.example=false;save();render();toast('Examples cleared');}break;
   case 'menu':openMenu();break;
   case 'howto':openHowto();break;
+  case 'tour':closeSheet();setTimeout(showTour,250);break;
+  case 'tourSkip':closeTour();break;
   case 'closeSheet':closeSheet();break;
   case 'pdf':closeSheet();exportPDF();break;
   case 'xlsx':closeSheet();exportXLSX();break;
@@ -1304,7 +1317,7 @@ function openMenu(){openSheet(`<h3>Menu</h3>
   <div class="caps s-cap">This tab</div><div class="s-group">${item('foldAll:0','unfold_more','sky','Expand all','Open every section')}${item('foldAll:1','unfold_less','sky','Collapse all','Show only section titles')}</div>
   <div class="caps s-cap">Share</div><div class="s-group">${item('pdf','picture_as_pdf','pink','Price list PDF','Every crop, with cost breakdowns')}${item('xlsx','table_view','mint','Excel workbook','Prices, costs and benches')}${item('bpJpg','architecture','sky','Blueprint JPG','All growing areas, to scale')}</div>
   <div class="caps s-cap">Your data</div><div class="s-group">${item('backup','download','sky','Save a backup','A file you can restore on any device')}${item('restore','upload','lav','Restore a backup','Replaces what\'s on this device')}</div>
-  <div class="s-group">${item('howto','help','butter','How the math works','Square-foot-weeks, bench turns, fill rate, margin')}${item('reset','restart_alt','pink','Start fresh','Erase everything on this device','danger')}</div>
+  <div class="s-group">${item('tour','play_circle','sky','Watch the tour','A 90-second walkthrough')}${item('howto','help','butter','How the math works','Square-foot-weeks, bench turns, fill rate, margin')}${item('reset','restart_alt','pink','Start fresh','Erase everything on this device','danger')}</div>
   <button class="cancel" data-a="closeSheet">Done</button>`,'Menu');}
 function openHowto(){openSheet(`<h3>How the math works</h3><div class="howto">
   <h4>Everything is figured per plug tray</h4><p>Cuttings, potting mix, the plug tray, supplies, labor and bench space add up to the cost of one plug tray.</p>
@@ -1380,6 +1393,20 @@ function restore(file){const fr=new FileReader();fr.onload=()=>{try{const j=JSON
   catch(e){toast('That file isn\'t a Plug backup');}};fr.readAsText(file);}
 
 S.crops.forEach(autoPrice);save();
+/* ---------- welcome tour (first visit only) ---------- */
+const TOUR_KEY='plugTourSeen';
+function tourSeen(){try{return localStorage.getItem(TOUR_KEY)==='1';}catch(e){return true;}}
+function closeTour(){try{localStorage.setItem(TOUR_KEY,'1');}catch(e){}const t=$('#tour');if(!t)return;const v=t.querySelector('video');if(v)v.pause();t.classList.remove('on');setTimeout(()=>t.remove(),300);}
+function showTour(){if($('#tour'))return;const t=document.createElement('div');t.id='tour';t.className='tour-ov';t.setAttribute('role','dialog');t.setAttribute('aria-modal','true');t.setAttribute('aria-label','Welcome tour');
+  t.innerHTML=`<div class="tour-box"><div class="tour-h"><span class="logo">${$('.logo').innerHTML}</span><div><h2>Welcome to Plug</h2><p>A 90-second tour of what it can do.</p></div></div>
+    <video src="plug-walkthrough.mp4" muted autoplay playsinline controls preload="auto"></video>
+    <div class="tour-btns"><button class="chip" data-a="tourSkip">Skip tour</button><button class="tour-go" data-a="tourSkip" hidden>Start using Plug</button></div>
+    <p class="foot muted">You can watch it again from the menu.</p></div>`;
+  document.body.appendChild(t);const v=t.querySelector('video');
+  v.addEventListener('error',closeTour);                       // no video file or offline: skip quietly
+  v.addEventListener('ended',()=>{t.querySelector('.tour-go').hidden=false;t.querySelector('.chip').hidden=true;});
+  const p=v.play();if(p&&p.catch)p.catch(()=>{});requestAnimationFrame(()=>t.classList.add('on'));}
+if(!navigator.webdriver&&!tourSeen())setTimeout(showTour,400);
 render();
 window.addEventListener('pagehide',saveNow);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveNow();});
