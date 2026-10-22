@@ -634,7 +634,8 @@ const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(
 const uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COSTS=['Structure payment or depreciation','Utilities (power, gas)','Water','Insurance','Shared labor (watering, spraying, cleanup)','Other overhead'];
-const SRC={stock:{n:'In-house mother stock',ic:'park',cut:'Cuttings (mother stock)',sub:'Cut from your own stock plants'},buy:{n:'Bought in',ic:'local_shipping',cut:'Cuttings (bought in)',sub:'Unrooted cuttings shipped to you'},collect:{n:'Collected offsite',ic:'directions_car',cut:'Cuttings (collected)',sub:'A trip to take cuttings elsewhere'}};
+const SRC={stock:{n:'In-house mother stock',ic:'park',cut:'Cuttings (mother stock)',sub:'Cut from your own stock plants'},buy:{n:'Bought in',ic:'local_shipping',cut:'Cuttings (bought in)',sub:'Unrooted cuttings shipped to you'},collect:{n:'Collected offsite',ic:'directions_car',cut:'Cuttings (collected)',sub:'A trip to take cuttings elsewhere'},seed:{n:'Seed',ic:'grass',cut:'Seed',sub:'Sown right in the plug tray'}};
+const isSeed=c=>(c||crop()).src==='seed';
 
 /* ---------- state ---------- */
 // Cubic inches per cell for common liner inserts that fit a 1020 plug tray (manufacturer specs; brands vary):
@@ -647,7 +648,7 @@ const UNITS=['gal','qt','fl oz','lb','oz','roll','box','bag','case','each'];
 // Example varieties. Patent status: Coleus 'Inky Fingers' not patented (NC Farms); Lavandula Sensational! 'Tesseract' PP31786;
 // Salvia 'Love and Wishes' listed PPAF (Flowers by the Sea). Coleus URC price from NC Farms (22.2¢, units of 100).
 // Salvia rooting time from the 'SER-WISH' patent (rooted cutting in 21–28 days). Everything else is a starting estimate to edit.
-const BASE={cells:'50',cellVol:String(CELL_VOL[50]),volAuto:1,src:'stock',cpc:1,fillMin:'3',gradeMin:'3',royalty:'',buy:{each:'0.25',per:'1000',freight:'40'},collect:{rate:'',trip:'',perTrip:''}};
+const BASE={cells:'50',cellVol:String(CELL_VOL[50]),volAuto:1,src:'stock',cpc:1,fillMin:'3',gradeMin:'3',royalty:'',buy:{each:'0.25',per:'1000',freight:'40'},collect:{rate:'',trip:'',perTrip:''},seed:{price:'',per:'',freight:'',packs:'',perCell:'',rate:''}};
 const TRIP={rate:'250',trip:'40',perTrip:'1000'};
 const P=(name,noHorm,o)=>({name,noHorm,crop:Object.assign(JSON.parse(JSON.stringify(BASE)),o)});
 const PRESETS={
@@ -662,7 +663,11 @@ const PRESETS={
   salvia:P("Salvia 'Love and Wishes'",1,{stock:{plant:'4',life:'6',upkeep:'0.25',perMonth:'10',harvest:'300',pot:'1'},
     stickRate:'225',mistWk:'3',hardWk:'2',strike:'90',cull:'5',patent:true,ppaf:'PPAF',royalty:'0.12',price:'auto'}),
   ajuga:P("Ajuga reptans 'Catlin\'s Giant'",1,{stock:{plant:'3',life:'12',upkeep:'0.25',perMonth:'12',harvest:'300',pot:'1'},collect:TRIP,
-    stickRate:'225',mistWk:'3',hardWk:'2',strike:'90',cull:'5',price:'auto'})};
+    stickRate:'225',mistWk:'3',hardWk:'2',strike:'90',cull:'5',price:'auto'}),
+  // Deergrass: Theodore Payne Foundation seed packet, $7 for about 3,100 seeds. Germination 2 to 6 weeks (Jelitto: 4 to 6 at 68°F).
+  // Seeds per cell, sowing rate, weeks and fill % are starting estimates to edit.
+  deergrass:P('Muhlenbergia rigens (deergrass)',1,{cells:'72',cellVol:String(CELL_VOL[72]),src:'seed',buy:{each:'',per:'',freight:''},
+    seed:{price:'7',per:'3100',freight:'',packs:'',perCell:'5',rate:'300'},stickRate:'',mistWk:'4',hardWk:'6',strike:'85',cull:'10',price:'auto'})};
 const EX_SUP={'Rooting hormone':['1','each','30','12'],'Fungicide':['1','qt','60','12'],'Fertilizer':['1','bag','45','6'],'Tags':['1','box','40','6'],'Sticky cards':['1','box','25','3']};
 const EX_COSTS=['3000','2400','600','800','',''];
 const isHorm=x=>/hormone|iba|rootone|dip.?n.?grow|hormex/i.test(x.n||'');
@@ -672,7 +677,7 @@ function newSupply(n){return {id:uid(),n:n||'',qty:'',unit:'each',price:'',month
 function defaultSupplies(){return ['Rooting hormone','Fungicide','Fertilizer','Tags','Sticky cards','Carrying flats'].map(newSupply);}
 function newBench(type){return {id:uid(),type:type||'mist',len:'',wid:'',count:''};}
 function newCrop(name){return {id:uid(),name:name||'New crop',cells:'50',src:'stock',
-  stock:{plant:'',life:'',upkeep:'',perMonth:'',harvest:'',pot:'3'},buy:{each:'',per:'',freight:''},collect:{rate:'',trip:'',perTrip:''},
+  stock:{plant:'',life:'',upkeep:'',perMonth:'',harvest:'',pot:'3'},buy:{each:'',per:'',freight:''},collect:{rate:'',trip:'',perTrip:''},seed:{price:'',per:'',freight:'',packs:'',perCell:'',rate:''},
   cpc:1,cellVol:String(CELL_VOL[50]),volAuto:1,off:[],patent:false,ppaf:'',stickRate:'',fillMin:'',gradeMin:'',mistWk:'',hardWk:'',strike:'',cull:'',royalty:'',price:''};}
 const EX_BENCH=[['mist','12','4','2'],['open','20','4','3']];const EX_OLD_STOCK=['stock','12','4','2'];
 const EX_FIELDS={wage:'18',occ:'75',mistAdd:'0.03',mixYd:'45',pack:'10',trayPrice:'2.50',trayUses:'5'};
@@ -689,14 +694,14 @@ function clearShop(sh){const clr=(o,k,v)=>{if(v&&String(o[k])===v)o[k]='';};
   sh.supplies.forEach(x=>{const e=EX_SUP[x.n];if(e&&x.qty===e[0]&&x.unit===e[1]&&x.price===e[2]&&x.months===e[3]){x.qty='';x.unit='each';x.price='';x.months='';}});}
 const isBlankCrop=c=>/^(new crop|crop \d+)$/i.test(String(c.name||'').trim())&&!c.price&&!c.stickRate&&!c.strike&&!c.mistWk&&!c.hardWk&&
   ![c.stock,c.buy,c.collect].some(o=>o&&Object.keys(o).some(k=>k!=='pot'&&o[k]!==''&&o[k]!=null));
-function defaults(ex){const sup=defaultSupplies();const all=Object.keys(PRESETS).map(k=>fromPreset(k,sup));const c=all[0];const d={v:1,presets:8,example:!!ex,guide:null,tab:'price',cur:c.id,crops:all,
+function defaults(ex){const sup=defaultSupplies();const all=Object.keys(PRESETS).map(k=>fromPreset(k,sup));const c=all[0];const d={v:1,presets:9,example:!!ex,guide:null,tab:'price',cur:c.id,crops:all,
   shop:{wage:'',margin:40,rateMode:'calc',rateDirect:'',mistAdd:'',costs:COSTS.map(n=>({n,v:''})),occ:'',weeks:'52',flatL:'21.5',flatW:'11',benches:[newBench('mist'),newBench('open')],
     mixYd:'',pack:'',trayPrice:'',trayUses:'',supplies:sup,flatsYr:''},
   plan:{trays:'',ship:''}};if(ex)exampleShop(d.shop,false);return d;}
 function normalize(o){if(!o||typeof o!=='object'||!Array.isArray(o.crops)||!o.crops.length)return defaults(true);const d=defaults(false);
   const s=Object.assign({},d.shop,o.shop||{});if(!Array.isArray(s.costs))s.costs=d.shop.costs;if(!(o.shop&&Array.isArray(o.shop.supplies))){s.supplies=defaultSupplies();const oh=(o.shop&&Array.isArray(o.shop.hormones))?o.shop.hormones:[];const h0=s.supplies[0];if(oh[0]){h0.n=oh[0].n||h0.n;h0.price=oh[0].price||'';h0.qty=oh[0].price?'1':'';}}
   delete s.hormones;delete s.tagPrice;if(!Array.isArray(s.benches))s.benches=[newBench('mist'),newBench('open')];
-  const crops=o.crops.map(c=>{const b=newCrop();const r=Object.assign(b,c);r.stock=Object.assign(newCrop().stock,c.stock||{});if(!(c.stock&&c.stock.pot))r.stock.pot=/^coleus$/i.test(String(c.name||'').trim())?'1':'3';r.buy=Object.assign(newCrop().buy,c.buy||{});r.collect=Object.assign(newCrop().collect,c.collect||{});if(!r.id)r.id=uid();if(!SRC[r.src])r.src='stock';if(c.patent==null)r.patent=num(c.royalty)>0;if(!Array.isArray(r.off))r.off=[];
+  const crops=o.crops.map(c=>{const b=newCrop();const r=Object.assign(b,c);r.stock=Object.assign(newCrop().stock,c.stock||{});if(!(c.stock&&c.stock.pot))r.stock.pot=/^coleus$/i.test(String(c.name||'').trim())?'1':'3';r.buy=Object.assign(newCrop().buy,c.buy||{});r.collect=Object.assign(newCrop().collect,c.collect||{});r.seed=Object.assign(newCrop().seed,c.seed||{});if(!r.id)r.id=uid();if(!SRC[r.src])r.src='stock';if(c.patent==null)r.patent=num(c.royalty)>0;if(!Array.isArray(r.off))r.off=[];
     if(c.hormone===''&&!Array.isArray(c.off))r.off=s.supplies.filter(isHorm).map(x=>x.id);
     if(c.cellVol==null){const v=CELL_VOL[num(r.cells)];r.cellVol=v?String(v):'';r.volAuto=1;}
     ['hormone','flatsPerYd','tags','other'].forEach(k=>delete r[k]);return r;});
@@ -715,12 +720,13 @@ function normalize(o){if(!o||typeof o!=='object'||!Array.isArray(o.crops)||!o.cr
   if((o.presets||0)<3)crops.forEach(c=>{if(!/^coleus$/i.test(String(c.name).trim()))return;const p=PRESETS.coleus.crop;
     Object.keys(p).forEach(k=>{if(typeof p[k]==='string'&&k!=='src'&&(c[k]===''||c[k]==null))c[k]=p[k];});Object.keys(p.stock).forEach(k=>{if(!c.stock[k])c.stock[k]=p.stock[k];});});
   crops.forEach(c=>{const b=c.buy||(c.buy={});if(b.each==null){b.each=num(b.box)>0&&num(b.per)>0?String(+(num(b.box)/num(b.per)).toFixed(4)):'';}delete b.box;});
+  if((o.presets||0)<9&&!crops.some(c=>c.preset==='deergrass'))crops.push(fromPreset('deergrass',s.supplies));
   if((o.presets||0)<8)crops.forEach(c=>{const k=c.preset||Object.keys(PRESETS).find(x=>PRESETS[x].name===String(c.name).trim());if(!k||!PRESETS[k])return;const p=PRESETS[k].crop;
     ['each','per','freight'].forEach(x=>{if(!c.buy[x])c.buy[x]=p.buy[x];});if(p.patent&&!c.royalty)c.royalty=p.royalty;if(p.patent&&!c.ppaf)c.ppaf=p.ppaf;});
   if((o.presets||0)<7){crops.forEach(c=>{if(/^coleus$/i.test(String(c.name).trim())){c.name=PRESETS.coleus.name;c.preset='coleus';}});
     Object.keys(PRESETS).forEach(k=>{if(k!=='coleus'&&!crops.some(c=>c.preset===k||String(c.name).trim()===PRESETS[k].name))crops.push(fromPreset(k,s.supplies));});}
   const cur=crops.some(c=>c.id===o.cur)?o.cur:crops[0].id;
-  return {v:1,presets:8,example:ex,guide:(o.guide&&o.guide.id)?o.guide:null,tab:['price','crop','costs','benches','plan'].includes(o.tab==='shop'?'costs':o.tab)?(o.tab==='shop'?'costs':o.tab):'price',cur,crops,shop:s,plan:Object.assign({},d.plan,o.plan||{})};}
+  return {v:1,presets:9,example:ex,guide:(o.guide&&o.guide.id)?o.guide:null,tab:['price','crop','costs','benches','plan'].includes(o.tab==='shop'?'costs':o.tab)?(o.tab==='shop'?'costs':o.tab):'price',cur,crops,shop:s,plan:Object.assign({},d.plan,o.plan||{})};}
 let S;try{S=normalize(JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY)));}catch(e){S=defaults(true);}
 S.tab='price';{const co=S.crops.find(c=>c.preset==='coleus')||S.crops.find(c=>/^coleus/i.test(String(c.name).trim()));if(co)S.cur=co.id;}
 // presets priced 'auto' start at the target-margin price
@@ -804,7 +810,8 @@ function calc(c){
   const A=opt(s.mistAdd);
   // tray
   const cells=need(c.cells,'c.cells','Cells per plug tray','crop');
-  const cpc=Math.max(1,Math.round(opt(c.cpc))||1);
+  const seed=c.src==='seed';
+  const cpc=seed?Math.max(1,Math.round(opt(c.seed.perCell))||1):Math.max(1,Math.round(opt(c.cpc))||1);
   const cuts=cells!=null?cells*cpc:null;
   // cuttings
   let unit=null,harvRate=null;
@@ -812,6 +819,9 @@ function calc(c){
     const pd=POTS[stockPot()].d;stockSpace=R!=null?Math.pow(pd/12,2)*R*52/12:null;stockK=K;stockFit=benchTotals().stockFit;
     if(all(P,L,K,H,W)&&stockSpace!=null){unit=(P/L+opt(c.stock.upkeep)+stockSpace)/K+(own?0:W/H);harvPay=W/H;}}
   else if(c.src==='buy'){const B=need(c.buy.each,'c.buy.each','Price per cutting','costs');let fr=0;if(opt(c.buy.freight)>0){const N=need(c.buy.per,'c.buy.per','Cuttings per order','costs');fr=N!=null?opt(c.buy.freight)/N:null;}if(B!=null&&fr!=null)unit=B+fr;}
+  else if(seed){const Pk=need(c.seed.price,'c.seed.price','Price per packet','costs'),N=need(c.seed.per,'c.seed.per','Seeds per packet','costs');let fr=0;
+    if(opt(c.seed.freight)>0){const k=need(c.seed.packs,'c.seed.packs','Packets per order','costs');fr=k!=null?opt(c.seed.freight)/k:null;}
+    if(all(Pk,N)&&fr!=null)unit=(Pk+fr)/N;}
   else{const Rt=need(c.collect.rate,'c.collect.rate','Collecting rate','crop');harvRate=Rt;const trip=opt(c.collect.trip);let tp=0;
     if(trip>0){const pt=need(c.collect.perTrip,'c.collect.perTrip','Cuttings per trip','costs');tp=pt!=null?trip/pt:null;}
     if(all(Rt,W)&&tp!=null){unit=(own?0:W/Rt)+tp;harvPay=W/Rt;}}
@@ -830,19 +840,20 @@ function calc(c){
     const per=fy.n>0?q*p/(fy.n*mo/12):null;supUsed.push({x,per});if(per==null)supCost=null;else if(supCost!=null)supCost+=per;});
   if(supUsed.length&&!(fy.n>0)){miss.push({key:'shop.flatsYr',label:'Plug trays per year',tab:'costs'});supCost=null;}
   // labor
-  const sr=need(c.stickRate,'c.stickRate','Sticking rate','crop');const fm=opt(c.fillMin),gm=opt(c.gradeMin);
-  const laborAmt=all(W,sr)&&cuts!=null?W*(cuts/sr+(fm+gm)/60):null;const labor=own?0:laborAmt;
+  const sr=seed?need(c.seed.rate,'c.seed.rate','Sowing rate','crop'):need(c.stickRate,'c.stickRate','Sticking rate','crop');const fm=opt(c.fillMin),gm=opt(c.gradeMin);
+  const stickN=seed?cells:cuts;
+  const laborAmt=all(W,sr)&&stickN!=null?W*(stickN/sr+(fm+gm)/60):null;const labor=own?0:laborAmt;
   const ownPay=own&&laborAmt!=null&&cuts!=null?laborAmt+harvPay*cuts:null;
-  const laborHrs=sr!=null&&cuts!=null?cuts/sr+(fm+gm)/60:null;
+  const laborHrs=sr!=null&&stickN!=null?stickN/sr+(fm+gm)/60:null;
   // bench
   const fl=flatIn();if(!fl)miss.push({key:'shop.flatL',label:'Plug tray size',tab:'benches'});const sq=fl?fl.sqft:null;const mw=opt(c.mistWk),hw=opt(c.hardWk);
   if(!(mw+hw>0)){miss.push({key:'c.mistWk',label:'Weeks on the bench',tab:'crop'});}
   const space=R!=null&&sq!=null&&mw+hw>0?sq*(mw*(R+A)+hw*R):null;
   const sqftWk=sq!=null?sq*(mw+hw):null;
   // yield
-  const st=need(c.strike,'c.strike','Rooting %','crop');const cl=Math.min(opt(c.cull),100);
+  const st=need(c.strike,'c.strike',seed?'Cells that fill %':'Rooting %','crop');const cl=Math.min(opt(c.cull),100);
   const sell=cells!=null&&st!=null?cells*Math.min(st,100)/100*(1-cl/100):null;
-  const roy=c.patent&&c.src!=='buy'?opt(c.royalty):0;const royCost=sell!=null?roy*sell:null;
+  const roy=c.patent&&c.src!=='buy'&&!seed?opt(c.royalty):0;const royCost=sell!=null?roy*sell:null;
   const parts=[
     {k:'cut',n:SRC[c.src].cut,v:cutCost,col:'mint'},
     {k:'media',n:'Potting mix',v:media,col:'peach'},
@@ -860,7 +871,7 @@ function calc(c){
   const margin=profit!=null&&rev>0?profit/rev:null;
   const tm=num(s.margin)/100;const sugg=perPlug!=null&&tm<1&&tm>=0?perPlug/(1-tm):null;
   const seen={};const m2=miss.filter(x=>seen[x.key]?false:(seen[x.key]=1));
-  return {W,R,A,costSum,cells,cpc,cuts,unit,harvRate,media,tpb,ydPerFlat,cv,trayCost,supCost,supUsed,fy,labor,own,ownPay,stockSpace,stockK,stockFit,laborHrs,sr,fm,gm,sq,mw,hw,space,sqftWk,
+  return {W,R,A,costSum,cells,cpc,cuts,stickN,seed,unit,harvRate,media,tpb,ydPerFlat,cv,trayCost,supCost,supUsed,fy,labor,own,ownPay,stockSpace,stockK,stockFit,laborHrs,sr,fm,gm,sq,mw,hw,space,sqftWk,
     st,cl,sell,royCost,parts,total,perPlug,perCut,price:hasPrice?price:null,rev,profit,margin,sugg,tm,miss:m2};
 }
 
@@ -870,7 +881,7 @@ function fld(label,key,o={}){const v=get(key);
 function foldBtn(k){const f=folded(k);return `<button class="icon-sm fold-btn" data-a="foldItem:${k}" aria-label="${f?'Expand':'Collapse'}" aria-expanded="${!f}"><span class="ms sm fold-ic">expand_more</span></button>`;}
 const OPEN={};
 function folded(k){return !OPEN[k];}
-function cardHead(icon,tone,title,sub){const k=S.tab+':'+title,f=folded(k);return `<div class="card-h fold-h${f?' folded':''}" data-a="fold:${esc(k)}" role="button" tabindex="0" aria-expanded="${!f}"><div class="card-t"><span class="card-ic tn-${tone}"><span class="ms" aria-hidden="true">${icon}</span></span><div><h2 class="title">${title}</h2>${sub?`<p class="foot muted">${sub}</p>`:''}</div></div><span class="ms fold-ic" aria-hidden="true">expand_more</span></div>`;}
+function cardHead(icon,tone,title,sub,key){const k=S.tab+':'+(key||title),f=folded(k);return `<div class="card-h fold-h${f?' folded':''}" data-a="fold:${esc(k)}" role="button" tabindex="0" aria-expanded="${!f}"><div class="card-t"><span class="card-ic tn-${tone}"><span class="ms" aria-hidden="true">${icon}</span></span><div><h2 class="title">${title}</h2>${sub?`<p class="foot muted">${sub}</p>`:''}</div></div><span class="ms fold-ic" aria-hidden="true">expand_more</span></div>`;}
 function pills(){return `<section class="crop-pick" aria-label="Crop"><label class="cp-sel"><span class="ms" aria-hidden="true">eco</span><select id="cropSel" aria-label="Choose a crop">${S.crops.map(c=>`<option value="${c.id}"${c.id===S.cur?' selected':''}>${esc(c.name||'Untitled')}</option>`).join('')}</select></label><button class="cp-add" data-a="addCrop" aria-label="Add a variety"><span class="ms" aria-hidden="true">add</span></button></section>`;}
 function missCard(r,tab){const list=tab?r.miss.filter(x=>x.tab===tab):r.miss;if(!list.length)return '';
   return `<section class="card miss-card">${cardHead('pending_actions','butter','Still needed',tab?'Fill these in to finish the price.':'Tap one to go to it. Until these are in, the price can\'t be figured.')}<div class="miss-wrap">${list.map(x=>`<button class="mchip" data-a="jump:${x.key}|${x.tab}"><span class="ms" aria-hidden="true">${{costs:'payments',benches:'table_rows'}[x.tab]||'eco'}</span>${esc(x.label)}</button>`).join('')}</div></section>`;}
@@ -923,25 +934,27 @@ function vCrop(){const c=crop(),r=calc(c),s=S.shop;
 <section class="card">${cardHead('grid_on','sky','Plug tray','')}
   <div class="fgrid">${fld('Cells per plug tray','c.cells',{wide:true})}</div>
   <div class="qchips">${[32,38,50,72,128].map(n=>`<button class="qchip${num(c.cells)===n?' on':''}" data-a="cells:${n}">${n}</button>`).join('')}</div>
-  <div class="sw-row" style="margin-top:14px"><div><span class="bodyE sm blk">Cuttings per cell</span><span class="foot muted">More than one for a fuller plug</span></div>
-    <div class="stepper"><button data-a="cpc:-1" aria-label="Fewer cuttings per cell"><span class="ms">remove</span></button><span class="badge-wrap"><span class="badge" data-o="cpc">${r.cpc}</span></span><button data-a="cpc:1" aria-label="More cuttings per cell"><span class="ms">add</span></button></div></div>
+  <div class="sw-row" style="margin-top:14px"><div><span class="bodyE sm blk">${isSeed(c)?'Seeds per cell':'Cuttings per cell'}</span><span class="foot muted">${isSeed(c)?'A pinch per cell so most cells fill':'More than one for a fuller plug'}</span></div>
+    <div class="stepper"><button data-a="cpc:-1" aria-label="Fewer per cell"><span class="ms">remove</span></button><span class="badge-wrap"><span class="badge" data-o="cpc">${r.cpc}</span></span><button data-a="cpc:1" aria-label="More per cell"><span class="ms">add</span></button></div></div>
   <div class="fgrid">${fld('Cell volume','c.cellVol',{suf:'in³',wide:true,hint:CELL_VOL[num(c.cells)]?'Typical for a '+num(c.cells)+'-cell insert. Check yours; brands vary.':'Check the insert\'s spec sheet'})}</div>
   <div class="calc-line"><span style="white-space:nowrap">Mix per plug tray</span><b data-o="mixLine">—</b></div></section>
 
-<section class="card">${cardHead(SRC[c.src].ic,'mint','Cuttings source','Costs for each are on the Costs tab.')}
-  <div class="src-opts" data-o="srcCmp" role="radiogroup" aria-label="Cuttings source"></div>
+<section class="card">${cardHead(SRC[c.src].ic,'mint','Cuttings or seed','Costs for each are on the Costs tab.','Cuttings source')}
+  <div class="src-opts" data-o="srcCmp" role="radiogroup" aria-label="Cuttings or seed"></div>
 </section>
 
 <section class="card">${cardHead('inventory_2','lav','Supplies used','Prices are on the Costs tab.')}
   ${s.supplies.some(x=>num(x.price)>0)?s.supplies.filter(x=>num(x.price)>0).map(x=>`<div class="sw-row sup-sw"><span class="callout">${esc(x.n||'Untitled')}</span><label class="switch"><input type="checkbox" data-sup="${x.id}"${(c.off||[]).includes(x.id)?'':' checked'} aria-label="${esc(x.n||'Supply')} used on this crop"><span></span></label></div>`).join(''):'<p class="foot muted empty-note">No supplies have prices yet. Add them on the Costs tab.</p>'}</section>
 
 <section class="card">${cardHead('pan_tool','pink','Labor','')}
-  <div class="fgrid">${c.src==='stock'?fld('Harvest rate','c.stock.harvest',{suf:'/hr',wide:true,hint:'Cuttings you can take from stock plants per hour'}):c.src==='collect'?fld('Collecting rate','c.collect.rate',{suf:'/hr',wide:true,hint:'Cuttings you can collect per hour, including time on site'}):''}${fld('Sticking rate','c.stickRate',{suf:'/hr',wide:true,hint:'Cuttings prepped, dipped and stuck per hour'})}${fld('Fill plug trays','c.fillMin',{suf:'min',hint:'Per plug tray'})}${fld('Grade & ship','c.gradeMin',{suf:'min',hint:'Per plug tray'})}</div>
-  <p class="foot muted note">Watering and care while rooting are in your bench rate.</p></section>
+  <div class="fgrid">${c.src==='stock'?fld('Harvest rate','c.stock.harvest',{suf:'/hr',wide:true,hint:'Cuttings you can take from stock plants per hour'}):c.src==='collect'?fld('Collecting rate','c.collect.rate',{suf:'/hr',wide:true,hint:'Cuttings you can collect per hour, including time on site'}):''}${isSeed(c)?fld('Sowing rate','c.seed.rate',{suf:'/hr',wide:true,hint:'Cells sown per hour'}):fld('Sticking rate','c.stickRate',{suf:'/hr',wide:true,hint:'Cuttings prepped, dipped and stuck per hour'})}${fld('Fill plug trays','c.fillMin',{suf:'min',hint:'Per plug tray'})}${fld('Grade & ship','c.gradeMin',{suf:'min',hint:'Per plug tray'})}</div>
+  <p class="foot muted note">Watering and care while ${isSeed(c)?'germinating':'rooting'} are in your bench rate.</p></section>
 
 <section class="card">${cardHead('schedule','butter','Growing','')}
-  <div class="fgrid">${fld('Under mist','c.mistWk',{suf:'wks',hint:'Rooting'})}${fld('Hardening off','c.hardWk',{suf:'wks',hint:'Open bench, to finish'})}
-  ${fld('Rooting','c.strike',{suf:'%',hint:'Cuttings that root'})}${fld('Grade-out loss','c.cull',{suf:'%',hint:'Rooted but not sellable'})}
+  <div class="fgrid">${isSeed(c)?fld('Germinating','c.mistWk',{suf:'wks',hint:'Under mist or a dome'})+fld('Growing on','c.hardWk',{suf:'wks',hint:'Open bench, to finish'})
+  +fld('Cells that fill','c.strike',{suf:'%',hint:'Cells with a seedling'})+fld('Grade-out loss','c.cull',{suf:'%',hint:'Filled but not sellable'})
+  :fld('Under mist','c.mistWk',{suf:'wks',hint:'Rooting'})+fld('Hardening off','c.hardWk',{suf:'wks',hint:'Open bench, to finish'})
+  +fld('Rooting','c.strike',{suf:'%',hint:'Cuttings that root'})+fld('Grade-out loss','c.cull',{suf:'%',hint:'Rooted but not sellable'})}
 </div></section>
 <div data-r="missCrop"></div>`;}
 
@@ -952,12 +965,13 @@ function cuttingCosts(c){const nm=esc(c.name||'this crop');
   const f={stock:`${fld('Cost per stock plant','c.stock.plant',{pre:'$',hint:'What it cost to buy or grow one'})}${fld('Stock plant life','c.stock.life',{suf:'mo',hint:'Months you cut from it'})}
       ${fld('Cuttings per plant','c.stock.perMonth',{suf:'/mo',hint:'Usable cuttings a month'})}${fld('Upkeep per plant','c.stock.upkeep',{pre:'$',suf:'/mo',hint:'Water, fertilizer, care'})}`,
     buy:`${fld('Price per cutting','c.buy.each',{pre:'$',wide:true,hint:'Unrooted cutting price from your supplier'})}${fld('Freight per order','c.buy.freight',{pre:'$',hint:'Shipping and box fees, if any'})}<div class="dep" data-dep="perOrder">${fld('Cuttings per order','c.buy.per',{hint:'Spreads the freight'})}</div>`,
+    seed:`${fld('Price per packet','c.seed.price',{pre:'$',hint:'Or per ounce or pound'})}${fld('Seeds per packet','c.seed.per',{hint:'Seeds in that amount'})}${fld('Shipping per order','c.seed.freight',{pre:'$',hint:'If any'})}<div class="dep" data-dep="packs">${fld('Packets per order','c.seed.packs',{hint:'Spreads the shipping'})}</div><div class="calc-line" style="grid-column:1/-1"><span>Per seed</span><b data-o="perSeed">—</b></div>`,
     collect:`${fld('Trip cost','c.collect.trip',{pre:'$',hint:'Gas or fees per trip, if any'})}<div class="dep" data-dep="perTrip">${fld('Cuttings per trip','c.collect.perTrip',{})}</div>`};
-  return `<section class="card">${cardHead('content_cut','mint','Cuttings',`For ${nm} · ${SRC[c.src].n.toLowerCase()}`)}
+  return `<section class="card">${cardHead(isSeed(c)?'grass':'content_cut','mint',isSeed(c)?'Seed':'Cuttings',`For ${nm} · ${isSeed(c)?'grown from seed':SRC[c.src].n.toLowerCase()}`,'Cuttings')}
   <div class="fgrid">${f[c.src]}</div>
   ${c.src==='stock'?'<p class="foot muted note">Bench space for stock plants is added from the pot size on the Benches tab.</p>':''}
   <div class="sw-row" style="margin-top:14px"><div><span class="bodyE sm blk">Patented or trademarked variety</span><span class="foot muted">Adds a royalty per plug</span></div><label class="switch"><input type="checkbox" data-patent="1"${c.patent?' checked':''} aria-label="Patented or trademarked variety"><span></span></label></div>
-  ${c.patent?`<div class="fgrid">${fld('Royalty per plug','c.royalty',{pre:'$',hint:c.src==='buy'?'Not added: bought-in cuttings usually include it':'Estimate. Get the real rate from the licensing agent.'})}${fld('PPAF number','c.ppaf',{text:true,hint:'Patent or PPAF number'})}</div>`:''}</section>`;}
+  ${c.patent?`<div class="fgrid">${fld('Royalty per plug','c.royalty',{pre:'$',hint:c.src==='buy'||c.src==='seed'?'Not added: purchased cuttings and seed usually include it':'Estimate. Get the real rate from the licensing agent.'})}${fld('PPAF number','c.ppaf',{text:true,hint:'Patent or PPAF number'})}</div>`:''}</section>`;}
 function vCosts(){const s=S.shop,area=benchTotals(usesStock()).area;
   return exNote()+`
 <section class="card">${cardHead('payments','pink','Labor','')}<div class="fgrid">${fld('Hourly wage','shop.wage',{pre:'$',suf:'/hr',wide:true,hint:s.ownLabor?'What your time is worth. Used to show your pay.':'Include payroll taxes if you pay them'})}</div>
@@ -1037,10 +1051,11 @@ function planCalc(c,r){const t=Math.round(opt(S.plan.trays));if(!(t>0))return nu
   if(out.cuts==null||!(r.sell>0))return Object.assign(out,{incomplete:true});
   const s=S.shop;
   out.bags=r.tpb?out.trays/r.tpb:null;
+  out.packets=c.src==='seed'&&opt(c.seed.per)>0?Math.ceil(out.cuts/opt(c.seed.per)):null;
   out.boxes=c.src==='buy'&&opt(c.buy.per)>0&&opt(c.buy.freight)>0?Math.ceil(out.cuts/opt(c.buy.per)):null;
   out.stock=null;
-  out.hHarv=(c.src!=='buy'&&r.harvRate)?out.cuts/r.harvRate:0;
-  out.hStick=r.sr?out.cuts/r.sr:null;
+  out.hHarv=(c.src!=='buy'&&c.src!=='seed'&&r.harvRate)?out.cuts/r.harvRate:0;
+  out.hStick=r.sr&&r.stickN!=null?t*r.stickN/r.sr:null;
   out.hTray=out.trays*(r.fm+r.gm)/60;
   out.hours=out.hStick!=null?out.hHarv+out.hStick+out.hTray:null;
   out.cost=r.total!=null?out.trays*r.total:null;
@@ -1060,7 +1075,7 @@ function planCalc(c,r){const t=Math.round(opt(S.plan.trays));if(!(t>0))return nu
     out.stick=out.list[0].stick;out.ready=ship||addDays(lastStick,wks*7);out.noShip=!ship;out.late=out.stick<new Date(new Date().toDateString());}
   return out;}
 function planHTML(c,r){const p=planCalc(c,r);
-  if(!p)return `<section class="card"><p class="callout muted">Enter how many plug trays the buyer wants to see plugs, cuttings, dates, labor and profit.</p></section>`;
+  if(!p)return `<section class="card"><p class="callout muted">Enter how many plug trays the buyer wants to see plugs, cuttings or seed, dates, labor and profit.</p></section>`;
   if(p.incomplete)return missCard(r)||`<section class="card"><p class="callout muted">Fill in cells and rooting % for this crop first.</p></section>`;
   const kv=(ic,l,v)=>`<div class="kv"><span><span class="ms">${ic}</span>${l}</span><b>${v}</b></div>`;
   const alerts=[];
@@ -1075,14 +1090,15 @@ function planHTML(c,r){const p=planCalc(c,r);
   if(alerts.length&&!p.noBench)alerts.push(['note','This assumes the benches are free for this contract.']);
   return alerts.map(x=>x[0]==='note'?`<p class="foot muted alert-note">${x[1]}</p>`:`<div class="alert ${x[0]}" role="alert"><span class="ms" aria-hidden="true">${x[0]==='bad'?'error':x[0]==='warn'?'warning':'info'}</span><p>${x[1]}</p></div>`).join('')+`<section class="tiles" aria-label="Order size">
     <div class="tile tn-butter"><div class="tile-h"><span class="caps">Plugs</span></div><div class="tile-v bodyE num">${p.plugs.toLocaleString('en-US')}</div><div class="tiny">to deliver</div></div>
-    <div class="tile tn-mint"><div class="tile-h"><span class="caps">Cuttings</span></div><div class="tile-v bodyE num">${p.cuts.toLocaleString('en-US')}</div><div class="tiny">to take</div></div>
+    <div class="tile tn-mint"><div class="tile-h"><span class="caps">${r.seed?'Seeds':'Cuttings'}</span></div><div class="tile-v bodyE num">${p.cuts.toLocaleString('en-US')}</div><div class="tiny">${r.seed?'to sow':'to take'}</div></div>
     <div class="tile tn-sky"><div class="tile-h"><span class="caps">Rounds</span></div><div class="tile-v bodyE num${p.over?' neg':''}">${p.rounds||'—'}</div><div class="tiny">${p.over?'won\'t fit':'on your benches'}</div></div></section>
   <section class="card">${cardHead('event','butter','Schedule',p.noShip?'Starting today. Add a ship date to work backward.':'')}
-    ${p.list?p.list.map((x,k)=>kv('content_cut',p.list.length>1?`Stick round ${k+1}`:'Stick',fmtDate(x.stick)+`<small>${x.stick<new Date(new Date().toDateString())?'<span class="neg">Already past</span> · ':''}${x.trays} plug tray${x.trays===1?'':'s'}${r.mw>0?' · off mist '+fmtDate(x.move):''}</small>`)).join('')+kv('local_shipping',p.noShip?'All ready':'Ship',fmtDate(p.ready)):'<p class="foot muted">'+(p.noBench?'Add your benches on the Benches tab.':'Add weeks under mist and hardening off on the Crop tab.')+'</p>'}</section>
+    ${p.list?p.list.map((x,k)=>kv(r.seed?'grass':'content_cut',p.list.length>1?`${r.seed?'Sow':'Stick'} round ${k+1}`:(r.seed?'Sow':'Stick'),fmtDate(x.stick)+`<small>${x.stick<new Date(new Date().toDateString())?'<span class="neg">Already past</span> · ':''}${x.trays} plug tray${x.trays===1?'':'s'}${r.mw>0?' · off mist '+fmtDate(x.move):''}</small>`)).join('')+kv('local_shipping',p.noShip?'All ready':'Ship',fmtDate(p.ready)):'<p class="foot muted">'+(p.noBench?'Add your benches on the Benches tab.':'Add weeks under mist and hardening off on the Crop tab.')+'</p>'}</section>
   <section class="card">${cardHead('checklist','sky','What it takes','')}
-    ${kv('grid_on','Plug trays to stick',p.trays.toLocaleString('en-US')+`<small>${n1(r.sell,1)} sellable plugs each</small>`)}
+    ${kv('grid_on',r.seed?'Plug trays to sow':'Plug trays to stick',p.trays.toLocaleString('en-US')+`<small>${n1(r.sell,1)} sellable plugs each</small>`)}
     ${p.stock!=null?kv('park','Stock plants to cut from',p.stock.toLocaleString('en-US')+`<small>for the biggest round${r.stockFit?' · room for '+r.stockFit.toLocaleString('en-US'):''}</small>`):''}
     ${p.boxes!=null?kv('local_shipping','Cutting orders',p.boxes):''}
+    ${p.packets!=null?kv('grass','Seed packets',p.packets.toLocaleString('en-US')):''}
     ${kv('inventory_2','Potting mix',p.bags!=null?n1(p.bags,2)+' yd³':'—')}
     ${kv('pan_tool','Labor',p.hours!=null?n1(p.hours,1)+' hrs':'—')}
   </section>
@@ -1097,7 +1113,7 @@ function planHTML(c,r){const p=planCalc(c,r);
 const SEC_ORDER={crop:['Crop','Plug tray','Cuttings source','Supplies used','Labor','Growing'],costs:['Labor','Cuttings','Potting mix & plug trays','Supplies','Bench rate'],benches:['Plug tray size','Benches'],price:['Price']};
 const TAB_ORDER=['crop','costs','benches','price'];
 function secOf(key){const p=(a)=>a.some(x=>key===x||key.startsWith(x));
-  if(key==='c.name')return ['crop','Crop'];if(p(['c.cells','c.cellVol']))return ['crop','Plug tray'];if(p(['c.stock.harvest','c.collect.rate']))return ['crop','Labor'];if(p(['c.stock.','c.buy.','c.collect.','c.royalty','c.ppaf']))return ['costs','Cuttings'];
+  if(key==='c.name')return ['crop','Crop'];if(p(['c.cells','c.cellVol']))return ['crop','Plug tray'];if(p(['c.stock.harvest','c.collect.rate','c.seed.rate']))return ['crop','Labor'];if(p(['c.stock.','c.buy.','c.collect.','c.seed.','c.royalty','c.ppaf']))return ['costs','Cuttings'];
   if(p(['c.stickRate','c.fillMin','c.gradeMin']))return ['crop','Labor'];if(p(['c.mistWk','c.hardWk','c.strike','c.cull']))return ['crop','Growing'];
   if(key==='shop.wage')return ['costs','Labor'];if(p(['shop.mixYd','shop.pack','shop.trayPrice','shop.trayUses']))return ['costs','Potting mix & plug trays'];
   if(p(['shop.supplies','shop.flatsYr']))return ['costs','Supplies'];if(p(['shop.costs','shop.occ','shop.rateDirect','shop.mistAdd']))return ['costs','Bench rate'];
@@ -1175,7 +1191,7 @@ function drawBlueprint(cv,cw){const L=bpLayout(cw);const f=flatIn();const pot=bp
   g.fillText(new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),tx+u*1.5+g.measureText('PLUG').width*1.7+u*2.5,ty+u*2);
   const lines=[`${bt.mist.toLocaleString('en-US')} mist · ${bt.open.toLocaleString('en-US')} open plug trays`+(bt.pots[pot]?` · ${bt.pots[pot].toLocaleString('en-US')} ${POTS[pot].n} stock pots`:''),
     `${n1(bt.area,0)} sq ft of benches · plug tray ${S.shop.flatL} × ${S.shop.flatW} in`];
-  if(!usesStock())lines.push(`${crop().name||'This crop'}: cuttings ${crop().src==='buy'?'bought in':'collected'}, no stock area`);
+  if(!usesStock())lines.push(`${crop().name||'This crop'}: ${crop().src==='seed'?'grown from seed':'cuttings '+(crop().src==='buy'?'bought in':'collected')}, no stock area`);
   g.fillStyle='#fff';g.font=font(u*1.6,600);lines.forEach((t,i)=>{g.font=font(u*(i<2?1.6:1.4),i<2?600:500);g.fillStyle=i<2?'#fff':'#cfe0ff';g.fillText(t,tx+u*1.5,ty+tbH*0.36+u*1.4+i*u*2.4);});
   const sx=ox,sy=ty+tbH-u*3.5,len=Math.min(10,Math.floor(W/2)),sl=len*s;g.strokeStyle='#fff';g.lineWidth=Math.max(1.5,u*0.25);
   g.beginPath();g.moveTo(sx,sy);g.lineTo(sx+sl,sy);g.moveTo(sx,sy-u*0.8);g.lineTo(sx,sy+u*0.8);g.moveTo(sx+sl,sy-u*0.8);g.lineTo(sx+sl,sy+u*0.8);g.moveTo(sx+sl/2,sy-u*0.5);g.lineTo(sx+sl/2,sy+u*0.5);g.stroke();
@@ -1193,7 +1209,7 @@ function render(){document.body.dataset.tab=S.tab;{const m=document.querySelecto
   $('#main').innerHTML=VIEWS[S.tab]();refresh();}
 function o(name,text,html){$$(`[data-o="${name}"]`).forEach(e=>{if(html)e.innerHTML=text;else e.textContent=text;});}
 function deps(c){const show=(n,v)=>$$(`[data-dep="${n}"]`).forEach(e=>e.hidden=!v);
-  show('perTrip',opt(c.collect.trip)>0);show('perOrder',opt(c.buy.freight)>0);show('fy',S.shop.supplies.some(x=>num(x.price)>0));show('mist',benchTotals().mist>0);
+  show('perTrip',opt(c.collect.trip)>0);show('perOrder',opt(c.buy.freight)>0);show('packs',opt(c.seed.freight)>0);show('fy',S.shop.supplies.some(x=>num(x.price)>0));show('mist',benchTotals().mist>0);
   const mr=$('[data-o=rateMist]');if(mr)mr.closest('.kv').hidden=!(benchTotals().mist>0);}
 function refresh(){syncStockBench();const c=crop(),r=calc(c);deps(c);const t=S.tab;
   const missKeys=new Set(r.miss.map(x=>x.key));
@@ -1209,11 +1225,11 @@ function refresh(){syncStockBench();const c=crop(),r=calc(c);deps(c);const t=S.t
     const bb=$('[data-r=bars]');if(bb)bb.innerHTML=barsHTML(r);
   }else if(t==='crop'){
     o('cpc',String(r.cpc));
-    {const el=$('[data-o=srcCmp]');if(el)el.innerHTML=srcCompare(c).map(x=>`<button class="src-opt${x.k===c.src?' on':''}" data-a="src:${x.k}" role="radio" aria-checked="${x.k===c.src}"><span class="ms" aria-hidden="true">${SRC[x.k].ic}</span><span class="t">${SRC[x.k].n}<small>${x.k==='buy'&&num(c.buy.each)>0?plug(num(c.buy.each))+' per cutting'+(opt(c.buy.freight)>0?' + freight':''):SRC[x.k].sub}</small></span><b>${x.v!=null?plug(x.v):'needs info'}<small>total per plug</small></b></button>`).join('');}
+    {const el=$('[data-o=srcCmp]');if(el)el.innerHTML=srcCompare(c).map(x=>`<button class="src-opt${x.k===c.src?' on':''}" data-a="src:${x.k}" role="radio" aria-checked="${x.k===c.src}"><span class="ms" aria-hidden="true">${SRC[x.k].ic}</span><span class="t">${SRC[x.k].n}<small>${x.k==='buy'&&num(c.buy.each)>0?plug(num(c.buy.each))+' per cutting'+(opt(c.buy.freight)>0?' + freight':''):x.k==='seed'&&num(c.seed.price)>0&&num(c.seed.per)>0?money(num(c.seed.price))+' for '+num(c.seed.per).toLocaleString('en-US')+' seeds':SRC[x.k].sub}</small></span><b>${x.v!=null?plug(x.v):'needs info'}<small>total per plug</small></b></button>`).join('');}
     o('mixLine',r.ydPerFlat!=null?`${n1(r.ydPerFlat*27,2)} cu ft · ${n1(r.tpb,0)} plug trays/yd³`:'—');
     const m=$('[data-r=missCrop]');if(m)m.innerHTML=missCard(r,'crop');
   }else if(t==='costs'){
-    o('costSum',r.costSum>0?money(r.costSum,0):'—');
+    o('costSum',r.costSum>0?money(r.costSum,0):'—');o('perSeed',r.seed&&r.unit!=null?(r.unit*100).toFixed(r.unit<0.01?3:2)+'¢':'—');
     o('rateOpen',r.R!=null?money(r.R,3)+' / sq ft / wk':'—');
     o('rateMist',r.R!=null?money(r.R+r.A,3)+' / sq ft / wk':'—');
     o('tm2',Math.round(opt(S.shop.margin))+'%');
@@ -1276,8 +1292,8 @@ function act(a,arg,b){const c=crop();
   case 'editPrice':{const pi=$('#priceIn');b.classList.add('off');pi.classList.add('on');const i=pi.querySelector('input');i.value=c.price;i.focus();i.select();break;}
   case 'useSugg':{const r=calc(c);if(r.sugg!=null){c.price=(Math.ceil(r.sugg*100-1e-6)/100).toFixed(2);save();render();toast('Price set to '+money(+c.price));}break;}
   case 'cells':c.cells=arg;if(c.volAuto||!c.cellVol){const cv=CELL_VOL[+arg];c.cellVol=cv?String(cv):'';c.volAuto=1;}save();render();break;
-  case 'cpc':c.cpc=Math.min(5,Math.max(1,(Math.round(opt(c.cpc))||1)+(+arg)));save();refresh();o('cpc',String(c.cpc));break;
-  case 'src':if(c.src!==arg){c.src=arg;save();render();toast(arg==='stock'?'Using in-house mother stock. Stock bench is back.':arg==='buy'?'Buying in cuttings. Stock bench left out.':'Collecting cuttings offsite. Stock bench left out.');}break;
+  case 'cpc':if(isSeed(c)){c.seed.perCell=String(Math.min(20,Math.max(1,(Math.round(opt(c.seed.perCell))||1)+(+arg))));save();refresh();o('cpc',c.seed.perCell);}else{c.cpc=Math.min(5,Math.max(1,(Math.round(opt(c.cpc))||1)+(+arg)));save();refresh();o('cpc',String(c.cpc));}break;
+  case 'src':if(c.src!==arg){c.src=arg;save();render();toast(arg==='stock'?'Using in-house mother stock. Stock bench is back.':arg==='buy'?'Buying in cuttings. Stock bench left out.':arg==='seed'?'Growing from seed. Stock bench left out.':'Collecting cuttings offsite. Stock bench left out.');}break;
   case 'rateMode':S.shop.rateMode=arg;save();render();break;
   case 'addCost':S.shop.costs.push({n:'',v:''});save();render();setTimeout(()=>{const i=$$('[data-k^="shop.costs."][data-k$=".n"]').pop();if(i)i.focus();},30);break;
   case 'delCost':S.shop.costs.splice(+arg,1);save();render();break;
@@ -1343,7 +1359,9 @@ function openHowto(){openSheet(`<h3>How the math works</h3><div class="howto">
   <p style="margin-top:8px">If hardening off takes longer than rooting, the open benches have to hold more than one batch at a time, and the turn size shrinks to fit.</p>
   <h4>Bought-in cuttings</h4><p>Enter the price per cutting. Freight is spread over the cuttings in each order.</p>
   <div class="f">Per cutting = price + freight ÷ cuttings per order</div>
-  <p style="margin-top:8px">Royalties on patented varieties are added only when you propagate them yourself. Bought-in cuttings from a licensed supplier usually include it.</p>
+  <p style="margin-top:8px">Royalties on patented varieties are added only when you propagate them yourself. Bought-in cuttings and seed from a licensed supplier usually include it.</p>
+  <h4>Seed</h4><p>Enter what you paid and how many seeds came in it, a packet, an ounce or a pound. Seeds per cell and cells that fill set how much seed each plug tray uses and how many plugs it makes. Sowing labor is figured per cell.</p>
+  <div class="f">Per seed = (price + shipping ÷ packets per order) ÷ seeds per packet<br>Seed per plug tray = cells × seeds per cell × per seed</div>
   <h4>Mother stock</h4><p>When a crop uses mother stock, a stock bench appears on the Benches tab, sized to hold the stock plants it needs. Pick #1, #3 or #5 pots there. Pots sit side by side (top diameters 6⅜, 10½ and 11⅞ inches), and each pot's bench space is added to the stock plant's monthly cost. If you change the stock bench's length or count yourself, it stops resizing.</p>
   <div class="f">Stock plants needed = cuttings per month to keep the mist bench full ÷ cuttings per plant per month</div>
   <p style="margin-top:8px">If the stock area can't hold that many, yearly production drops to what your stock plants can supply.</p>
@@ -1368,13 +1386,13 @@ function exportPDF(){const J=window.jspdf;if(!J||!J.jsPDF){toast('Connect to the
   doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text('Plug price list',40,52);
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(110);doc.text(new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),40,68);doc.setTextColor(0);
   const R=rows();
-  doc.autoTable({startY:84,head:[['Crop','Cuttings','Plug tray','Sellable','Cost / plug','Price / plug','Plug tray sells for','Margin','Plug trays / yr','Income / yr']],
+  doc.autoTable({startY:84,head:[['Crop','Source','Plug tray','Sellable','Cost / plug','Price / plug','Plug tray sells for','Margin','Plug trays / yr','Income / yr']],
     body:R.map(({c,r})=>{const k=capacity(r);return [c.name||'Untitled',srcLabel(c),n1(r.cells,0)+' cells',r.sell!=null?n1(r.sell,1):'—',plug(r.perPlug),r.price!=null?money(r.price):'—',money(r.rev),pct(r.margin),k.flats?k.flats.toLocaleString('en-US'):'—',money(k.rev,0)];}),
     styles:{fontSize:9,cellPadding:5},headStyles:{fillColor:[17,17,20]},alternateRowStyles:{fillColor:[247,247,249]}});
   R.forEach(({c,r})=>{let y=doc.lastAutoTable.finalY+26;if(y>640){doc.addPage();y=52;}
     doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(c.name||'Untitled',40,y);
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(110);
-    doc.text([r.cells!=null?n1(r.cells,0)+'-cell plug tray':'',r.cpc+' cutting'+(r.cpc>1?'s':'')+' per cell',SRC[c.src].n.toLowerCase(),r.mw+r.hw>0?n1(r.mw+r.hw,1)+' weeks':'',r.st!=null?n1(r.st,0)+'% rooting':'',r.cl?n1(r.cl,0)+'% grade-out':'',c.patent&&c.ppaf?'PPAF '+c.ppaf:''].filter(Boolean).join(' · '),40,y+13);doc.setTextColor(0);
+    doc.text([r.cells!=null?n1(r.cells,0)+'-cell plug tray':'',r.cpc+(r.seed?' seed':' cutting')+(r.cpc>1?'s':'')+' per cell',SRC[c.src].n.toLowerCase(),r.mw+r.hw>0?n1(r.mw+r.hw,1)+' weeks':'',r.st!=null?n1(r.st,0)+(r.seed?'% of cells fill':'% rooting'):'',r.cl?n1(r.cl,0)+'% grade-out':'',c.patent&&c.ppaf?'PPAF '+c.ppaf:''].filter(Boolean).join(' · '),40,y+13);doc.setTextColor(0);
     doc.autoTable({startY:y+20,tableWidth:W-80,head:[['Cost per plug tray','$','Share']],
       body:[...r.parts.map(p=>[p.n,p.v!=null?money(p.v):'needs info',p.v!=null&&r.total?pct(p.v/r.total):'']),['Total',money(r.total),''],['Per sellable plug',plug(r.perPlug),'']],
       styles:{fontSize:9,cellPadding:4},headStyles:{fillColor:[60,60,68]},columnStyles:{1:{halign:'right'},2:{halign:'right'}},
@@ -1382,7 +1400,7 @@ function exportPDF(){const J=window.jspdf;if(!J||!J.jsPDF){toast('Connect to the
   deliver(doc.output('blob'),'plug-price-list-'+today()+'.pdf');}
 function exportXLSX(){if(!window.XLSX){toast('Connect to the internet once to load Excel export');return;}
   const X=window.XLSX,wb=X.utils.book_new(),R=rows();
-  const pl=[['Crop','Cutting source','Royalty per plug','PPAF number','Supplies used','Cells','Cuttings per cell','Sellable plugs','Weeks','Cost per plug tray','Cost per plug','Price per plug','Plug tray revenue','Profit per plug tray','Margin','Plug trays per turn','Turn every (wks)','Plug trays per year','Income per year','Profit per year']];
+  const pl=[['Crop','Source','Royalty per plug','PPAF number','Supplies used','Cells','Cuttings or seeds per cell','Sellable plugs','Weeks','Cost per plug tray','Cost per plug','Price per plug','Plug tray revenue','Profit per plug tray','Margin','Plug trays per turn','Turn every (wks)','Plug trays per year','Income per year','Profit per year']];
   R.forEach(({c,r})=>{const k=capacity(r);pl.push([c.name,srcLabel(c),c.patent&&num(c.royalty)>0?num(c.royalty):'',c.patent?c.ppaf||'':'',r.supUsed.map(u=>u.x.n).join(', ')||'None',r.cells,r.cpc,r.sell!=null?+r.sell.toFixed(2):'',r.mw+r.hw,r.total!=null?+r.total.toFixed(2):'',r.perPlug!=null?+r.perPlug.toFixed(4):'',r.price!=null?r.price:'',r.rev!=null?+r.rev.toFixed(2):'',r.profit!=null?+r.profit.toFixed(2):'',r.margin!=null?+r.margin.toFixed(4):'',k.batch>0?k.batch:'',k.batch>0?k.every:'',k.flats||'',k.rev!=null?Math.round(k.rev):'',k.profit!=null?Math.round(k.profit):'']);});
   const ws1=X.utils.aoa_to_sheet(pl);ws1['!cols']=pl[0].map((h,i)=>({wch:i===0?24:14}));X.utils.book_append_sheet(wb,ws1,'Price list');
   const bd=[['Crop','Cost item','Per plug tray','Per sellable plug']];
